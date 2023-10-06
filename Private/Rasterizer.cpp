@@ -19,7 +19,8 @@ error_t clipper_t::clip_cull(vertices_t* inout_vertex_pool)
 
 
 float4_t rasterizer_t::clip_to_ndc(float4_t clip)
-{
+{    
+    // Perspective division is done in order to project to ndc space.
     float3_t ndc = float3_t(clip) / clip.w;
     return float4_t(ndc.x, ndc.y, ndc.z, 1.0f / clip.w);
 }
@@ -29,14 +30,20 @@ error_t rasterizer_t::raster(uint32_t num_triangles, triangle_t* triangles, fron
 {
     const bool depth_enabled = m_depth_enabled;
     const bool depth_write_enabled = depth_enabled && m_depth_write_enabled;
+
+    // Convert our triangle from clip space to ndc space.
     for (uint32_t tri_id = 0; tri_id < num_triangles; ++tri_id)
     {
         triangle_t& triangle = triangles[tri_id];
-        
-        // Perspective division is done in order to project to ndc space.
         triangle.v0 = clip_to_ndc(triangle.v0);
         triangle.v1 = clip_to_ndc(triangle.v1);
         triangle.v2 = clip_to_ndc(triangle.v2);
+    }
+
+    // NDC triangles convert to raster space, and are rasterized!
+    for (uint32_t tri_id = 0; tri_id < num_triangles; ++tri_id)
+    {
+        triangle_t& triangle = triangles[tri_id];
         
         // From ndc space, we project to raster space (screen space.)
         float4_t v0_s = ndc_to_screen(triangle.v0);
