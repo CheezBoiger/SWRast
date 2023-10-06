@@ -37,7 +37,10 @@ public:
     // config to handle depth testing, must be enabled.
     error_t write_to_depth_stencil(framebuffer_t& framebuffer, const viewport_t& viewport, uint32_t x_s, uint32_t y_s, float depth);
     float read_depth_stencil(const framebuffer_t& framebuffer, const viewport_t& viewport, uint32_t x_s, uint32_t y_s);
-    
+    // Clear a render target in the framebuffer.
+    error_t clear_render_target(framebuffer_t& framebuffer, uint32_t index, const rect_t& rect, const float4_t& clear_color);
+    // Clear depth stencil in the frame buffer.
+    error_t clear_depth_stencil(framebuffer_t& framebuffer, const float2_t& clear_ds);
 private:
     
 };
@@ -113,9 +116,6 @@ public:
     // Bind a framebuffer to this rasterizer.
     error_t bind_frame_buffer(framebuffer_t framebuffer) { m_bound_framebuffer = framebuffer; return result_ok; }
 
-    // Clear the framebuffer.
-    error_t clear(uint32_t index, const float4_t& clear_color);
-
     // Perform rasterization with the given input triangles.
     // Triangles must be in clip space. Perspective projection will be conducted in here.
     error_t raster(uint32_t num_triangles, triangle_t* triangles, front_face_t winding_order);
@@ -126,6 +126,10 @@ public:
     error_t set_viewports(uint32_t num_viewports, viewport_t* viewports);
     void enable_depth(bool enable) { m_depth_enabled = enable; }
     void enable_write_depth(bool enable) { m_depth_write_enabled = enable;  }
+
+    error_t clear_render_target(uint32_t index, const rect_t& rect, const float4_t& clear_color) { return rop.clear_render_target(m_bound_framebuffer, index, rect, clear_color); }
+
+    render_output_t& get_rop() { return rop; }
 
 private:
     // Projects ndc coordinates to screen coordinates.

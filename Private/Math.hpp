@@ -99,6 +99,35 @@ struct vec4_t
 
 
 template<typename type>
+vec3_t<type> operator+(type scalar, const vec3_t<type>& rh)
+{
+    return rh + scalar;
+}
+
+
+template<typename type>
+vec4_t<type> operator+(type scalar, const vec4_t<type>& rh)
+{
+    return rh + scalar;
+}
+
+
+template<typename type>
+vec3_t<type> operator*(type scalar, const vec3_t<type>& rh)
+{
+    return rh * scalar;
+}
+
+
+template<typename type>
+vec4_t<type> operator*(type scalar, const vec4_t<type>& rh)
+{
+    return rh * scalar;
+}
+
+
+
+template<typename type>
 struct mat3x3_t
 {
     union

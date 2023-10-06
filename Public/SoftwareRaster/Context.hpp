@@ -80,6 +80,17 @@ enum format_t
     format_r32g32b32_float
 };
 
+
+enum compare_op_t
+{
+    compare_op_none,
+    compare_op_equal,
+    compare_op_less,
+    compare_op_less_equal,
+    compare_op_greater,
+    compare_op_greater_equal
+};
+
 struct resource_desc_t
 {
     resource_type_t     type;
@@ -102,6 +113,13 @@ struct viewport_t
     float far;
 };
 
+struct rect_t
+{
+    uint32_t x;
+    uint32_t y;
+    uint32_t width;
+    uint32_t height;
+};
 
 enum view_type_t
 {
@@ -139,7 +157,7 @@ SW_EXPORT_DLL error_t       destroy_sampler(sampler_t sampler);
 SW_EXPORT_DLL error_t       bind_render_targets(uint32_t num_rtvs, resource_t* rtvs, resource_t dsv);
 SW_EXPORT_DLL error_t       bind_depth_stencil(resource_t ds);
 
-SW_EXPORT_DLL error_t       clear_render_target(uint32_t slot, float* rgba);
+SW_EXPORT_DLL error_t       clear_render_target(uint32_t slot, const rect_t& rect, float* rgba);
 SW_EXPORT_DLL error_t       clear_depth_stencil(float* bounds);
 
 SW_EXPORT_DLL error_t       bind_vertex_buffers(uint32_t num_vbs, resource_t* vbs);

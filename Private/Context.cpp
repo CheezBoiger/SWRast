@@ -157,6 +157,8 @@ error_t bind_render_targets(uint32_t num_rtvs, resource_t* rtvs, resource_t dsv)
     for (uint32_t i = 0; i < num_rtvs; ++i)
     {
         framebuffer.bound_render_targets[i] = rtvs[i];
+        framebuffer.max_width = 0;
+        framebuffer.max_height = 0;
     }
     framebuffer.num_render_targets = num_rtvs;
     framebuffer.bound_depth_stencil = dsv;
@@ -195,5 +197,12 @@ error_t enable_depth_write(bool enable)
 {
     rasterizer.enable_write_depth(enable);
     return result_ok;
+}
+
+
+error_t clear_render_target(uint32_t index, const rect_t& rect, float* rgba)
+{
+    float4_t clear_color = { rgba[0], rgba[1], rgba[2], rgba[3] };
+    return rasterizer.clear_render_target(index, rect, clear_color);
 }
 } // 

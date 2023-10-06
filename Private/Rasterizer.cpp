@@ -26,6 +26,26 @@ float4_t rasterizer_t::clip_to_ndc(float4_t clip)
 }
 
 
+float4_t rasterizer_t::ndc_to_screen(float4_t ndc_coord)
+{
+    const float width = m_viewports[0].width;
+    const float height = m_viewports[0].height;
+    const float x = m_viewports[0].x;
+    const float y = m_viewports[0].y;
+    const float f = m_viewports[0].far;
+    const float n = m_viewports[0].near;
+    // Relies on viewport transformation, in order to project our normalized device coordinates
+    // to screen coordinates.
+    return float4_t
+        (
+            (width / 2) * ndc_coord.x + (x + width / 2),
+            (height / 2) * ndc_coord.y + (y + height / 2),
+            ((f - n) / 2) * ndc_coord.z + ((f + n) / 2),
+            ndc_coord.w
+        );
+}
+
+
 error_t rasterizer_t::raster(uint32_t num_triangles, triangle_t* triangles, front_face_t winding_order)
 {
     const bool depth_enabled = m_depth_enabled;
@@ -38,18 +58,23 @@ error_t rasterizer_t::raster(uint32_t num_triangles, triangle_t* triangles, fron
         triangle.v0 = clip_to_ndc(triangle.v0);
         triangle.v1 = clip_to_ndc(triangle.v1);
         triangle.v2 = clip_to_ndc(triangle.v2);
+
+        // From ndc space, we project to raster space (screen space.)
+        // our w is left as is (1 / w)
+        triangle.v0 = ndc_to_screen(triangle.v0);
+        triangle.v1 = ndc_to_screen(triangle.v1);
+        triangle.v2 = ndc_to_screen(triangle.v2);
     }
 
     // NDC triangles convert to raster space, and are rasterized!
     for (uint32_t tri_id = 0; tri_id < num_triangles; ++tri_id)
     {
         triangle_t& triangle = triangles[tri_id];
-        
-        // From ndc space, we project to raster space (screen space.)
-        float4_t v0_s = ndc_to_screen(triangle.v0);
-        float4_t v1_s = ndc_to_screen(triangle.v1);
-        float4_t v2_s = ndc_to_screen(triangle.v2);
 
+        // Triangles should be in raster space. (except 1 / w)
+        float4_t v0_s = triangle.v0;
+        float4_t v1_s = triangle.v1;
+        float4_t v2_s = triangle.v2;
         // We use raster space to calculate the bounding box of the 
         // triangle on screen, to which here we then perform the actual rasterization.
         fbounds2d_t bounds = calculate_bounding_volume2d(v0_s, v1_s, v2_s);
@@ -92,9 +117,11 @@ error_t rasterizer_t::raster(uint32_t num_triangles, triangle_t* triangles, fron
                     w0 /= area;
                     w1 /= area;
                     w2 /= area;
-                    // interpolate
+
+                    // linearly interpolate z and w
                     float z = v0_s.z * w0 + v1_s.z * w1 + v2_s.z * w2;
-                    float w = (w0 * v0_s.w + w1 * v1_s.w + w2 * v2_s.w);
+                    float w_inv = 1.f / (w0 * v0_s.w + w1 * v1_s.w + w2 * v2_s.w);
+
                     if (m_depth_enabled)
                     {
                         float value = rop.read_depth_stencil(m_bound_framebuffer, m_viewports[0], x_s, y_s);
@@ -104,15 +131,14 @@ error_t rasterizer_t::raster(uint32_t num_triangles, triangle_t* triangles, fron
                             continue;
                         }
                     }
+
+                    // Perspective correction on our barycentrics.
+                    float persp_b0 = w_inv * v0_s.w * w0;
+                    float persp_b1 = w_inv * v1_s.w * w1;
+                    float persp_b2 = w_inv * v2_s.w * w2;
+                    
                     // execute the bound pixel shader. This should probably be optimized!
-                    float4_t output = m_bound_pixel_shader ? m_bound_pixel_shader->execute(w0, w1, w2, float3_t(triangle.v0.w, triangle.v1.w, triangle.v2.w)) : float4_t(0, 0, 0, 0);
-                    triangle.v0.z = 1.0f / triangle.v0.w;
-                    triangle.v1.z = 1.0f / triangle.v1.w;
-                    triangle.v2.z = 1.0f / triangle.v2.w;
-                    float persp = 1 / (w0 * triangle.v0.w + w1 * triangle.v1.w + w2 * triangle.v2.w);
-                    output.r *= persp;
-                    output.g *= persp;
-                    output.b *= persp;
+                    float4_t output = m_bound_pixel_shader ? m_bound_pixel_shader->execute(persp_b0, persp_b1, persp_b2) : float4_t(0, 0, 0, 0);
                     // Finally, store the shaded pixel into the framebuffer.
                     rop.shade_to_output(m_bound_framebuffer, 0, m_viewports[0], x_s, y_s, output);
                     if (m_depth_write_enabled)
@@ -124,26 +150,6 @@ error_t rasterizer_t::raster(uint32_t num_triangles, triangle_t* triangles, fron
         }
     }
     return result_ok;
-}
-
-
-float4_t rasterizer_t::ndc_to_screen(float4_t ndc_coord)
-{
-    const float width = m_viewports[0].width;
-    const float height = m_viewports[0].height;
-    const float x = m_viewports[0].x;
-    const float y = m_viewports[0].y;
-    const float f = m_viewports[0].far;
-    const float n = m_viewports[0].near;
-    // Relies on viewport transformation, in order to project our normalized device coordinates
-    // to screen coordinates.
-    return float4_t
-        (
-            (width / 2) * ndc_coord.x + (x + width / 2),
-            (height / 2) * ndc_coord.y + (y + height / 2),
-            ((f - n) / 2) * ndc_coord.z + ((f + n) / 2),
-            ndc_coord.w
-        );
 }
 
 
@@ -217,5 +223,27 @@ float render_output_t::read_depth_stencil(const framebuffer_t& framebuffer, cons
         value = *((const float*)address); 
     }
     return value;
+}
+
+
+error_t render_output_t::clear_render_target(framebuffer_t& framebuffer, uint32_t index, const rect_t& rect, const float4_t& clear_color)
+{
+    resource_t rt = framebuffer.bound_render_targets[index];
+    uint32_t r = (uint32_t)(clear_color.r * 255.f);
+    uint32_t g = (uint32_t)(clear_color.g * 255.f);
+    uint32_t b = (uint32_t)(clear_color.b * 255.f);
+    uint32_t a = (uint32_t)(clear_color.a * 255.f);
+    uint32_t rgba = (r) | (g << 8) | (b << 16) | (a << 24);
+    // TODO: This needs to be configurable! Render target row_pitch needs to be the max width size!
+    uint32_t row_pitch = 1920 * 4;
+    for (uint32_t y = rect.y; y < rect.height; ++y)
+    {
+        for (uint32_t x = rect.x; x < rect.width; ++x)
+        {
+            uint32_t* output = (uint32_t*)(((uintptr_t)rt) + (x * 4) + (y * row_pitch));
+            *output = rgba;
+        }
+    }
+    return result_ok;
 }
 } // swrast
