@@ -16,6 +16,13 @@ struct framebuffer_t
     uint32_t num_render_targets;
     uint32_t max_width;
     uint32_t max_height;
+};
+
+// Render output ideally handles how we should be outputting to our 
+// render target (the format and size must be taken into account.)
+class render_output_t
+{
+public:
 
     // shade the framebuffer render target.
     //
@@ -24,12 +31,15 @@ struct framebuffer_t
     // y_s = y pixel in screen space.
     // color = output color to color the pixel.
     //
-    error_t shade_to_output(uint32_t index, viewport_t& viewport, uint32_t x_s, uint32_t y_s, const float4_t& color);
+    error_t shade_to_output(framebuffer_t& framebuffer, uint32_t index, const viewport_t& viewport, uint32_t x_s, uint32_t y_s, const float4_t& color);
 
     // Write to the depth stencil buffer, if one is bounded. This must also mean that the 
     // config to handle depth testing, must be enabled.
-    error_t write_to_depth_stencil(uint32_t x_s, uint32_t y_s, float depth);
-    float read_depth_stencil(uint32_t x_s, uint32_t y_s);
+    error_t write_to_depth_stencil(framebuffer_t& framebuffer, const viewport_t& viewport, uint32_t x_s, uint32_t y_s, float depth);
+    float read_depth_stencil(const framebuffer_t& framebuffer, const viewport_t& viewport, uint32_t x_s, uint32_t y_s);
+    
+private:
+    
 };
 
 
@@ -108,12 +118,14 @@ public:
 
     // Perform rasterization with the given input triangles.
     // Triangles must be in clip space. Perspective projection will be conducted in here.
-    error_t raster(uint32_t num_triangles, triangle_t* triangles);
+    error_t raster(uint32_t num_triangles, triangle_t* triangles, front_face_t winding_order);
 
     // Bind the pixel shader, this is invoked per pixel.
     error_t bind_pixel_shader(pixel_shader_t* shader) { m_bound_pixel_shader = shader; return result_ok; }
     
     error_t set_viewports(uint32_t num_viewports, viewport_t* viewports);
+    void enable_depth(bool enable) { m_depth_enabled = enable; }
+    void enable_write_depth(bool enable) { m_depth_write_enabled = enable;  }
 
 private:
     // Projects ndc coordinates to screen coordinates.
@@ -127,10 +139,12 @@ private:
     float edge_function(const float2_t& a, const float2_t& b, const float2_t& c);
     
     fbounds3d_t ndc_space;
-    render_output_t* rop;
+    render_output_t rop;
     framebuffer_t m_bound_framebuffer;
     pixel_shader_t* m_bound_pixel_shader;
     viewport_t m_viewports[8];
+    bool        m_depth_enabled = false;
+    bool        m_depth_write_enabled = false;
 
     // triangle bin, holds triangles that pertain to this bin.
     struct triangle_bin_t

@@ -19,6 +19,7 @@ typedef uint64_t resource_t;
 typedef uint32_t sampler_t;
 typedef uint32_t shader_t;
 typedef uint32_t uint;
+typedef uint32_t view_t;
 
 enum error_result_t
 {
@@ -97,13 +98,31 @@ struct viewport_t
     uint32_t y;
     uint32_t width;
     uint32_t height;
+    float near;
+    float far;
+};
+
+
+enum view_type_t
+{
+    view_type_render_target,
+    view_type_shader_resource,
+    view_type_unordered_access
+};
+
+
+struct view_desc_t
+{
+    view_type_t view_type;
+    resource_t  resource;
+    format_t    format;
 };
 
 
 enum front_face_t
 {
-    front_face_clockwise,
-    front_face_counter_clockwise
+    front_face_counter_clockwise,
+    front_face_clockwise
 };
 
 SW_EXPORT_DLL error_t       initialize();
@@ -117,7 +136,7 @@ SW_EXPORT_DLL error_t       set_viewports(uint32_t count, viewport_t* viewports)
 SW_EXPORT_DLL sampler_t     create_sampler();
 SW_EXPORT_DLL error_t       destroy_sampler(sampler_t sampler);
 
-SW_EXPORT_DLL error_t       bind_render_targets(uint32_t num_rtvs, resource_t* rtvs);
+SW_EXPORT_DLL error_t       bind_render_targets(uint32_t num_rtvs, resource_t* rtvs, resource_t dsv);
 SW_EXPORT_DLL error_t       bind_depth_stencil(resource_t ds);
 
 SW_EXPORT_DLL error_t       clear_render_target(uint32_t slot, float* rgba);

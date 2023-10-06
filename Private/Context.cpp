@@ -15,6 +15,7 @@ clipper_t               clipper;
 rasterizer_t            rasterizer;
 primitive_topology_t    bound_primitive_topology;
 allocator_t*            resource_allocator;
+front_face_t            winding_order;
 
 error_t initialize()
 {
@@ -99,7 +100,7 @@ error_t draw_instanced(uint32_t num_vertices, uint32_t instance_count, uint32_t 
     // finally rasterize onto framebuffer. Triangles are left in clip space,
     // so the rasterizer will convert them into ndc, for which they will then 
     // be projected into screen space.
-    rasterizer.raster(num_triangles, triangles);
+    rasterizer.raster(num_triangles, triangles, winding_order);
     return result_ok;
 }
 
@@ -150,7 +151,7 @@ error_t release_resource(resource_t resource)
 }
 
 
-error_t bind_render_targets(uint32_t num_rtvs, resource_t* rtvs)
+error_t bind_render_targets(uint32_t num_rtvs, resource_t* rtvs, resource_t dsv)
 {
     framebuffer_t framebuffer = { };
     for (uint32_t i = 0; i < num_rtvs; ++i)
@@ -158,6 +159,7 @@ error_t bind_render_targets(uint32_t num_rtvs, resource_t* rtvs)
         framebuffer.bound_render_targets[i] = rtvs[i];
     }
     framebuffer.num_render_targets = num_rtvs;
+    framebuffer.bound_depth_stencil = dsv;
     rasterizer.bind_frame_buffer(framebuffer);
     return result_ok;
 }
@@ -172,5 +174,26 @@ error_t set_viewports(uint32_t count, viewport_t* viewports)
 error_t bind_vertex_buffers(uint32_t num_vbs, resource_t* vbs)
 {
     return vertex_transformation.bind_vertex_buffers(num_vbs, vbs);
+}
+
+
+error_t set_front_face(front_face_t front_face)
+{
+    winding_order = front_face;
+    return result_ok;
+}
+
+
+error_t enable_depth(bool enable)
+{
+    rasterizer.enable_depth(true);
+    return result_ok;
+}
+
+
+error_t enable_depth_write(bool enable)
+{
+    rasterizer.enable_write_depth(enable);
+    return result_ok;
 }
 } // 

@@ -57,4 +57,13 @@ public:
         ::free(ptr);
     }
 };
+
+
+class linear_allocator : public allocator_t
+{
+public:
+        
+private:
+
+};
 } // swrast
