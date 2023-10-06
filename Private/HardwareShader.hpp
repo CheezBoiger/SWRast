@@ -36,11 +36,14 @@ public:
     // screen space coordinates, which might be used for other processes.
     // We will also want to pass any vertex attributes that might need to be 
     // used for texturing as well.
-    float4_t execute(float w0, float w1, float w2) 
+    float4_t execute(float w0, float w1, float w2, float3_t z) 
     {
         float3_t c0 = {1, 0, 0};
         float3_t c1 = {0, 1, 0};
         float3_t c2 = {0, 0, 1};
+        c0 = c0 * z.x;
+        c1 = c1 * z.y;
+        c2 = c2 * z.z;
         float r = w0 * c0[0] + w1 * c1[0] + w2 * c2[0];
         float g = w0 * c0[1] + w1 * c1[1] + w2 * c2[1];
         float b = w0 * c0[2] + w1 * c1[2] + w2 * c2[2];

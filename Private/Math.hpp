@@ -83,6 +83,18 @@ struct vec4_t
     vec4_t operator-(type scalar) const { return vec4_t(x - scalar, y - scalar, z - scalar, w - scalar); }
     vec4_t operator*(type scalar) const { return vec4_t(x * scalar, y * scalar, z * scalar, w * scalar); }
     vec4_t operator/(type scalar) const { return vec4_t(x / scalar, y / scalar, z / scalar, w / scalar); }
+
+    template<typename type>
+    operator vec2_t<type> ()
+    {
+        return vec2_t<type>(x, y);
+    }
+
+    template<typename type>
+    operator vec3_t<type> ()
+    {
+        return vec3_t<type>(x, y, z);
+    }
 };
 
 

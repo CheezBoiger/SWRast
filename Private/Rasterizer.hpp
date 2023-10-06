@@ -129,7 +129,8 @@ public:
 
 private:
     // Projects ndc coordinates to screen coordinates.
-    float3_t ndc_to_screen(float4_t ndc_coord);
+    float4_t ndc_to_screen(float4_t ndc_coord);
+    float4_t clip_to_ndc(float4_t clip);
 
     // calculate the bounding volume of a triangle, with the given 3 points in screen space.
     fbounds2d_t calculate_bounding_volume2d(const float2_t& a, const float2_t& b, const float2_t& c);

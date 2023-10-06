@@ -9,7 +9,7 @@ int main(int c, char* argv[])
 {
     swrast::initialize();
     swrast::resource_desc_t resource_desc = { };
-    resource_desc.width = (sizeof(float) * 4) * 6;
+    resource_desc.width = (sizeof(float) * 4) * 9;
     resource_desc.height = 1;
     resource_desc.type = swrast::resource_type_buffer;
     resource_desc.mip_count = 1;
@@ -39,28 +39,28 @@ int main(int c, char* argv[])
                 -0.5f,   0.5f, 0.f, 1.f, 
                  0.0f,  -0.5f, 0.f, 1.f
 #else
-                 0.5f,  0.5f, 0.f, 1.f, 
-                -0.5f,  0.5f, 0.f, 1.f,
-                 0.0f, -0.5f, 0.f, 1.f,
+                 0.3f,  0.3f, 0.f, 1.f, 
+                -0.3f,  0.3f, 0.f, 1.f,
+                 0.0f, -0.3f, 0.f, 1.f,
 
-                 1.f,  0.6f, -1.f, 1.f, 
-                -0.5f,  0.3f, 1.f, 1.f,
-                 -0.7f, -0.2f, 1.f, 1.f,
+                 1.f,  0.6f, 1.f, 1.f, 
+                -0.5f,  0.3f, -1.f, 3.f,
+                 -0.7f, -0.2f, -1.f, 3.f,
 
-                //-0.5f,   0.5f, 0.f, 1.f, 
-                //-0.5f,  -0.5f, 0.f, 1.f,
-                // 0.0f,  -0.5f, 0.f, 1.f
+                 1.f,   0.6f, 1.f, 1.f, 
+                -0.7f,  -0.2f, -1.f, 3.f,
+                 0.5f,  -0.5f, 1.f, 1.f
 #endif
             };
-       memcpy((void*)vb, triangle.data(), (sizeof(float) * 4) * 6);
+       memcpy((void*)vb, triangle.data(), (sizeof(float) * 4) * 9);
     }
 
     swrast::viewport_t viewport = { };
     viewport.x = viewport.y = 0;
     viewport.width = 800;
     viewport.height = 600;
-    viewport.near = 1.0000f;
-    viewport.far = 0.0f;
+    viewport.near = 0.0000f;
+    viewport.far = 1.0f;
     swrast::bind_render_targets(1, &rt, ds);
     swrast::set_front_face(swrast::front_face_clockwise);
     swrast::set_viewports(1, &viewport);
@@ -69,7 +69,7 @@ int main(int c, char* argv[])
     swrast::enable_depth(true);
     swrast::enable_depth_write(true);
     swrast::bind_vertex_buffers(1, &vb);
-    swrast::draw_instanced(6, 1, 0, 0);
+    swrast::draw_instanced(9, 1, 0, 0);
 
     int err = stbi_write_png("img.png", viewport.width, viewport.height, 4, (void*)rt, viewport.width * 4);
     err = stbi_write_png("depth.png", viewport.width, viewport.height, 4, (void*)ds, viewport.width * 4);

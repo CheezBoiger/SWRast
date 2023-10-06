@@ -18,6 +18,13 @@ error_t clipper_t::clip_cull(vertices_t* inout_vertex_pool)
 }
 
 
+float4_t rasterizer_t::clip_to_ndc(float4_t clip)
+{
+    float3_t ndc = float3_t(clip) / clip.w;
+    return float4_t(ndc.x, ndc.y, ndc.z, 1.0f / clip.w);
+}
+
+
 error_t rasterizer_t::raster(uint32_t num_triangles, triangle_t* triangles, front_face_t winding_order)
 {
     const bool depth_enabled = m_depth_enabled;
@@ -27,14 +34,14 @@ error_t rasterizer_t::raster(uint32_t num_triangles, triangle_t* triangles, fron
         triangle_t& triangle = triangles[tri_id];
         
         // Perspective division is done in order to project to ndc space.
-        triangle.v0 = triangle.v0 / triangle.v0.w;
-        triangle.v1 = triangle.v1 / triangle.v1.w;
-        triangle.v2 = triangle.v2 / triangle.v2.w;
+        triangle.v0 = clip_to_ndc(triangle.v0);
+        triangle.v1 = clip_to_ndc(triangle.v1);
+        triangle.v2 = clip_to_ndc(triangle.v2);
         
         // From ndc space, we project to raster space (screen space.)
-        float3_t v0_s = ndc_to_screen(triangle.v0);
-        float3_t v1_s = ndc_to_screen(triangle.v1);
-        float3_t v2_s = ndc_to_screen(triangle.v2);
+        float4_t v0_s = ndc_to_screen(triangle.v0);
+        float4_t v1_s = ndc_to_screen(triangle.v1);
+        float4_t v2_s = ndc_to_screen(triangle.v2);
 
         // We use raster space to calculate the bounding box of the 
         // triangle on screen, to which here we then perform the actual rasterization.
@@ -78,7 +85,9 @@ error_t rasterizer_t::raster(uint32_t num_triangles, triangle_t* triangles, fron
                     w0 /= area;
                     w1 /= area;
                     w2 /= area;
-                    float z = (v0_s.z) * w0 + (v1_s.z) * w1 + (v2_s.z) * w2;
+                    // interpolate
+                    float z = v0_s.z * w0 + v1_s.z * w1 + v2_s.z * w2;
+                    float w = (w0 * v0_s.w + w1 * v1_s.w + w2 * v2_s.w);
                     if (m_depth_enabled)
                     {
                         float value = rop.read_depth_stencil(m_bound_framebuffer, m_viewports[0], x_s, y_s);
@@ -89,8 +98,14 @@ error_t rasterizer_t::raster(uint32_t num_triangles, triangle_t* triangles, fron
                         }
                     }
                     // execute the bound pixel shader. This should probably be optimized!
-                    float4_t output = m_bound_pixel_shader ? m_bound_pixel_shader->execute(w0, w1, w2) : float4_t(0, 0, 0, 0);
-
+                    float4_t output = m_bound_pixel_shader ? m_bound_pixel_shader->execute(w0, w1, w2, float3_t(triangle.v0.w, triangle.v1.w, triangle.v2.w)) : float4_t(0, 0, 0, 0);
+                    triangle.v0.z = 1.0f / triangle.v0.w;
+                    triangle.v1.z = 1.0f / triangle.v1.w;
+                    triangle.v2.z = 1.0f / triangle.v2.w;
+                    float persp = 1 / (w0 * triangle.v0.w + w1 * triangle.v1.w + w2 * triangle.v2.w);
+                    output.r *= persp;
+                    output.g *= persp;
+                    output.b *= persp;
                     // Finally, store the shaded pixel into the framebuffer.
                     rop.shade_to_output(m_bound_framebuffer, 0, m_viewports[0], x_s, y_s, output);
                     if (m_depth_write_enabled)
@@ -105,7 +120,7 @@ error_t rasterizer_t::raster(uint32_t num_triangles, triangle_t* triangles, fron
 }
 
 
-float3_t rasterizer_t::ndc_to_screen(float4_t ndc_coord)
+float4_t rasterizer_t::ndc_to_screen(float4_t ndc_coord)
 {
     const float width = m_viewports[0].width;
     const float height = m_viewports[0].height;
@@ -115,11 +130,12 @@ float3_t rasterizer_t::ndc_to_screen(float4_t ndc_coord)
     const float n = m_viewports[0].near;
     // Relies on viewport transformation, in order to project our normalized device coordinates
     // to screen coordinates.
-    return float3_t
+    return float4_t
         (
             (width / 2) * ndc_coord.x + (x + width / 2),
             (height / 2) * ndc_coord.y + (y + height / 2),
-            ((f - n) / 2) * ndc_coord.z + ((f + n) / 2)
+            ((f - n) / 2) * ndc_coord.z + ((f + n) / 2),
+            ndc_coord.w
         );
 }
 
