@@ -1,6 +1,7 @@
 // Software Rasterizer
 #pragma once
 
+#include "Shader.hpp"
 #include <cstdint>
 
 
@@ -17,9 +18,9 @@ namespace swrast {
 typedef uint32_t error_t;
 typedef uint64_t resource_t;
 typedef uint32_t sampler_t;
-typedef uint32_t shader_t;
 typedef uint32_t uint;
 typedef uint32_t view_t;
+typedef uint64_t input_layout_t;
 
 enum error_result_t
 {
@@ -143,6 +144,14 @@ enum front_face_t
     front_face_clockwise
 };
 
+
+struct input_element_desc
+{
+    format_t format;
+    uint32_t input_slot;
+    uint32_t offset;
+};
+
 SW_EXPORT_DLL error_t       initialize();
 SW_EXPORT_DLL error_t       destroy();
 
@@ -171,8 +180,8 @@ SW_EXPORT_DLL error_t       destroy_shader(shader_t shader);
 SW_EXPORT_DLL error_t       bind_shader_resource(uint32_t slot, resource_t resource);
 SW_EXPORT_DLL error_t       bind_const_buffer(uint32_t slot, resource_t resource);
 
-SW_EXPORT_DLL error_t       bind_vertex_shader(shader_t vs);
-SW_EXPORT_DLL error_t       bind_pixel_shader(shader_t ps);
+SW_EXPORT_DLL error_t       bind_vertex_shader(vertex_shader_t* vs);
+SW_EXPORT_DLL error_t       bind_pixel_shader(pixel_shader_t* ps);
 
 SW_EXPORT_DLL error_t       map_resource(void** ptr, resource_t resource);
 SW_EXPORT_DLL error_t       unmap_resource(resource_t resource);
@@ -182,4 +191,7 @@ SW_EXPORT_DLL error_t       enable_depth_write(bool enable);
 
 SW_EXPORT_DLL error_t       set_primitive_topology(primitive_topology_t primitive_topology);
 SW_EXPORT_DLL error_t       set_front_face(front_face_t front_face);
+
+SW_EXPORT_DLL input_layout_t create_input_layout(uint32_t num_elements, input_element_desc* descs);
+SW_EXPORT_DLL error_t        set_input_layout(input_layout_t layout);
 } // SWRast

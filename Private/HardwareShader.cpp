@@ -5,22 +5,22 @@
 namespace swrast {
 
 
-shader_t hardware_shader_cache_t::allocate_shader(shader_type_t shader_type)
+hardware_shader_t* hardware_shader_cache_t::allocate_shader(shader_type_t shader_type)
 {
     static shader_t gen = 0;
     hardware_shader_t* shader_ptr = nullptr;
     switch (shader_type)
     {
-        case shader_type_vertex:
-        {
-            shader_ptr = new vertex_shader_t();
-            break;
-        }
-        case shader_type_pixel:
-        {
-            shader_ptr = new pixel_shader_t();
-            break;
-        }
+        //case shader_type_vertex:
+        //{
+        //    shader_ptr = new vertex_shader_t();
+        //    break;
+        //}
+        //case shader_type_pixel:
+        //{
+        //    shader_ptr = new pixel_shader_t();
+        //    break;
+        //}
     }
     // Store the shader into the cache.
     if (shader_ptr)
@@ -28,7 +28,7 @@ shader_t hardware_shader_cache_t::allocate_shader(shader_type_t shader_type)
         shader_t id = gen++;
         shader_ptr->id = id;
         shader_cache[shader_ptr->id] = shader_ptr;
-        return shader_ptr->id;
+        return shader_ptr;
     }
     // If no shader was created, or the creation failed, pass invalid value.
     return 0;

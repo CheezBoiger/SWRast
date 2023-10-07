@@ -46,7 +46,7 @@ float4_t rasterizer_t::ndc_to_screen(float4_t ndc_coord)
 }
 
 
-error_t rasterizer_t::raster(uint32_t num_triangles, triangle_t* triangles, front_face_t winding_order)
+error_t rasterizer_t::raster(uint32_t num_triangles, vertices_t& vertices, front_face_t winding_order)
 {
     const bool depth_enabled = m_depth_enabled;
     const bool depth_write_enabled = depth_enabled && m_depth_write_enabled;
@@ -54,27 +54,27 @@ error_t rasterizer_t::raster(uint32_t num_triangles, triangle_t* triangles, fron
     // Convert our triangle from clip space to ndc space.
     for (uint32_t tri_id = 0; tri_id < num_triangles; ++tri_id)
     {
-        triangle_t& triangle = triangles[tri_id];
-        triangle.v0 = clip_to_ndc(triangle.v0);
-        triangle.v1 = clip_to_ndc(triangle.v1);
-        triangle.v2 = clip_to_ndc(triangle.v2);
+        float4_t& v0 = vertices.get_vertex_position(tri_id * 3 + 0);
+        float4_t& v1 = vertices.get_vertex_position(tri_id * 3 + 1);
+        float4_t& v2 = vertices.get_vertex_position(tri_id * 3 + 2);
+        v0 = clip_to_ndc(v0);
+        v1 = clip_to_ndc(v1);
+        v2 = clip_to_ndc(v2);
 
         // From ndc space, we project to raster space (screen space.)
         // our w is left as is (1 / w)
-        triangle.v0 = ndc_to_screen(triangle.v0);
-        triangle.v1 = ndc_to_screen(triangle.v1);
-        triangle.v2 = ndc_to_screen(triangle.v2);
+        v0 = ndc_to_screen(v0);
+        v1 = ndc_to_screen(v1);
+        v2 = ndc_to_screen(v2);
     }
 
     // NDC triangles convert to raster space, and are rasterized!
     for (uint32_t tri_id = 0; tri_id < num_triangles; ++tri_id)
     {
-        triangle_t& triangle = triangles[tri_id];
-
         // Triangles should be in raster space. (except 1 / w)
-        float4_t v0_s = triangle.v0;
-        float4_t v1_s = triangle.v1;
-        float4_t v2_s = triangle.v2;
+        float4_t v0_s = vertices.get_vertex_position(tri_id * 3 + 0);
+        float4_t v1_s = vertices.get_vertex_position(tri_id * 3 + 1);
+        float4_t v2_s = vertices.get_vertex_position(tri_id * 3 + 2);
         // We use raster space to calculate the bounding box of the 
         // triangle on screen, to which here we then perform the actual rasterization.
         fbounds2d_t bounds = calculate_bounding_volume2d(v0_s, v1_s, v2_s);
@@ -133,12 +133,20 @@ error_t rasterizer_t::raster(uint32_t num_triangles, triangle_t* triangles, fron
                     }
 
                     // Perspective correction on our barycentrics.
-                    float persp_b0 = w_inv * v0_s.w * w0;
-                    float persp_b1 = w_inv * v1_s.w * w1;
-                    float persp_b2 = w_inv * v2_s.w * w2;
+                    float3_t persp_b = float3_t
+                        (
+                            w_inv * v0_s.w * w0, 
+                            w_inv * v1_s.w * w1, 
+                            w_inv * v2_s.w * w2
+                        );
+
+                    uintptr_t attrib_v0 = vertices.get_vertex(tri_id * 3 + 0);
+                    uintptr_t attrib_v1 = vertices.get_vertex(tri_id * 3 + 1);
+                    uintptr_t attrib_v2 = vertices.get_vertex(tri_id * 3 + 2);
+                    m_bound_pixel_shader->interpolate_varying(attrib_v0, attrib_v1, attrib_v2, persp_b);
                     
                     // execute the bound pixel shader. This should probably be optimized!
-                    float4_t output = m_bound_pixel_shader ? m_bound_pixel_shader->execute(persp_b0, persp_b1, persp_b2) : float4_t(0, 0, 0, 0);
+                    float4_t output = m_bound_pixel_shader ? m_bound_pixel_shader->execute() : float4_t(0, 0, 0, 0);
                     // Finally, store the shaded pixel into the framebuffer.
                     rop.shade_to_output(m_bound_framebuffer, 0, m_viewports[0], x_s, y_s, output);
                     if (m_depth_write_enabled)

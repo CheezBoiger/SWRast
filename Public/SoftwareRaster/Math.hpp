@@ -73,6 +73,9 @@ struct vec4_t
     vec4_t(type x = static_cast<type>(0), type y = static_cast<type>(0), type z = static_cast<type>(0), type w = static_cast<type>(0))
         : x(x), y(y), z(z), w(w)
     { }
+    vec4_t(const vec3_t<type>& comp3, type w = static_cast<type>(0))
+        : x(comp3[0]), y(comp3[1]), z(comp3[2]), w(w) 
+    { }
     type& operator[](size_t i) { return (&x)[i]; }
     type operator[](size_t i) const { return (&x)[i]; }
     vec4_t operator+(const vec4_t& rh) const { return vec4_t(x + rh.x, y + rh.y, z + rh.z, w + rh.w); }

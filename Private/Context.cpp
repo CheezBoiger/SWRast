@@ -42,46 +42,32 @@ error_t destroy()
 }
 
 
-size_t format_size_bytes(format_t format)
-{
-    switch (format)
-    {
-        case format_r16g16_float:
-        case format_r32_float:
-        case format_r8g8b8a8_unorm:
-        case format_r11g11b10_float:
-            return 4ull;
-
-        case format_r16g16b16a16_float:
-            return 8ull;
-
-        case format_r32g32b32a32_float:
-            return 16ull;
-
-        case format_r32g32b32_float:
-            return 12ull;
-
-        case format_r8_unorm:
-            return 1ull;
-    }
-    return 1ull;
-}
-
-
 shader_t create_shader(shader_type_t type, void* src_code, uint32_t size_bytes)
 {
-    shader_t shader_id = shader_cache.allocate_shader(type);
-    if (shader_id != 0)
+    hardware_shader_t* shader_ptr = shader_cache.allocate_shader(type);
+    if (shader_ptr)
     {
-        
+        switch (type)
+        {
+            case shader_type_vertex:
+            {
+                vertex_shader_t* vertex_shader = (vertex_shader_t*)shader_ptr;
+                vertex_shader->setup();
+            }
+            case shader_type_pixel:
+            {
+            }
+        }
+        return shader_ptr->id;
     }
-    return shader_id;
+    return 0;
 }
 
 
 error_t draw_instanced(uint32_t num_vertices, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance)
 {
-    vertices_t vertex_pool = assembler.get_available_vertex_pool(UINT16_MAX * instance_count);
+    vertices_t vertex_pool = assembler.get_available_vertex_pool(UINT16_MAX * instance_count, 
+        vertex_transformation.get_vertex_shader()->get_out_vertex_stride());
     // number of vertices called by draw call.
     vertex_pool.num_vertices = num_vertices;
 
@@ -94,30 +80,27 @@ error_t draw_instanced(uint32_t num_vertices, uint32_t instance_count, uint32_t 
     
     // Primitive generator creates our triangles.
     // In this case, we can just reinterpret our vertices as triangles.
-    triangle_t* triangles = (triangle_t*)vertex_pool.vertices;
     uint32_t num_triangles = vertex_pool.num_vertices / 3;
 
     // finally rasterize onto framebuffer. Triangles are left in clip space,
     // so the rasterizer will convert them into ndc, for which they will then 
     // be projected into screen space.
-    rasterizer.raster(num_triangles, triangles, winding_order);
+    rasterizer.raster(num_triangles, vertex_pool, winding_order);
     return result_ok;
 }
 
 
-error_t bind_vertex_shader(shader_t shader)
+error_t bind_vertex_shader(vertex_shader_t* shader)
 {
     // Find the vertex shader, and bind it to vertex transformer.
-    vertex_shader_t* vs = (vertex_shader_t*)shader_cache.get_hardware_shader(shader);
-    return vertex_transformation.bind_vertex_shader(vs);
+    return vertex_transformation.bind_vertex_shader(shader);
 }
 
 
-error_t bind_pixel_shader(shader_t shader)
+error_t bind_pixel_shader(pixel_shader_t* shader)
 {
     // Find the pixel shader, and bind it to the rasterizer.
-    pixel_shader_t* ps = (pixel_shader_t*)shader_cache.get_hardware_shader(shader);
-    return rasterizer.bind_pixel_shader(ps);
+    return rasterizer.bind_pixel_shader(shader);
 }
 
 
@@ -204,5 +187,20 @@ error_t clear_render_target(uint32_t index, const rect_t& rect, float* rgba)
 {
     float4_t clear_color = { rgba[0], rgba[1], rgba[2], rgba[3] };
     return rasterizer.clear_render_target(index, rect, clear_color);
+}
+
+
+input_layout_t create_input_layout(uint32_t num_elements, input_element_desc* descs)
+{
+    input_layout* layout = assembler.create_input_layout(num_elements, descs);
+    return (input_layout_t)layout;
+}
+
+
+error_t set_input_layout(input_layout_t layout)
+{
+    input_layout* input = (input_layout*)layout;
+    vertex_transformation.bind_input_layout(input);
+    return result_ok;
 }
 } // 

@@ -118,7 +118,7 @@ public:
 
     // Perform rasterization with the given input triangles.
     // Triangles must be in clip space. Perspective projection will be conducted in here.
-    error_t raster(uint32_t num_triangles, triangle_t* triangles, front_face_t winding_order);
+    error_t raster(uint32_t num_triangles, vertices_t& vertices, front_face_t winding_order);
 
     // Bind the pixel shader, this is invoked per pixel.
     error_t bind_pixel_shader(pixel_shader_t* shader) { m_bound_pixel_shader = shader; return result_ok; }
