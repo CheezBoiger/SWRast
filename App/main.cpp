@@ -89,8 +89,8 @@ int main(int c, char* argv[])
     resource_desc.depth_or_array_size = 1;
     swrast::resource_t vb = swrast::allocate_resource(resource_desc);
 
-    resource_desc.width = 1920;
-    resource_desc.height = 1080;
+    resource_desc.width = 800;
+    resource_desc.height = 600;
     resource_desc.format = swrast::format_r8g8b8a8_unorm;
     swrast::resource_t rt = swrast::allocate_resource(resource_desc);
    
@@ -144,8 +144,8 @@ int main(int c, char* argv[])
 
     swrast::viewport_t viewport = { };
     viewport.x = viewport.y = 0;
-    viewport.width = 1920;
-    viewport.height = 1080;
+    viewport.width = 800;
+    viewport.height = 600;
     viewport.near = 0.0000f;
     viewport.far = 1.0f;
     swrast::bind_render_targets(1, &rt, ds);

@@ -243,7 +243,7 @@ error_t render_output_t::clear_render_target(framebuffer_t& framebuffer, uint32_
     uint32_t a = (uint32_t)(clear_color.a * 255.f);
     uint32_t rgba = (r) | (g << 8) | (b << 16) | (a << 24);
     // TODO: This needs to be configurable! Render target row_pitch needs to be the max width size!
-    uint32_t row_pitch = 1920 * 4;
+    uint32_t row_pitch = 800 * 4;
     for (uint32_t y = rect.y; y < rect.height; ++y)
     {
         for (uint32_t x = rect.x; x < rect.width; ++x)
