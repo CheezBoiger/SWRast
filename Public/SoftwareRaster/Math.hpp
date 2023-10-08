@@ -2,6 +2,13 @@
 #pragma once
 #include <cstdint>
 
+#define SW_CONST_PI                3.141592653589793238462643383279502884197169399375
+#define SW_CONST_PI_HALF           1.57079632679489661923   // pi/2
+#define SW_CONST_PI_QUARTER        0.785398163397448309616 // pi/4
+#define SW_CONST_2_PI              6.283185307 // 2 * pi
+#define SW_CONST_TOLERANCE         0.0001     // 
+#define SW_EPSILON                 0.0000001 // 
+#define SW_E                       2.71828182845904523536   // e
 
 namespace swrast {
 
@@ -150,9 +157,41 @@ struct mat4x4_t
         struct { vec4_t<type> row0, row1, row2, row3; };
     };
 
-    mat4x4_t() { }
+    mat4x4_t(type a00 = static_cast<type>(0), type a01 = static_cast<type>(0), type a02 = static_cast<type>(0), type a03 = static_cast<type>(0),
+             type a10 = static_cast<type>(0), type a11 = static_cast<type>(0), type a12 = static_cast<type>(0), type a13 = static_cast<type>(0),
+             type a20 = static_cast<type>(0), type a21 = static_cast<type>(0), type a22 = static_cast<type>(0), type a23 = static_cast<type>(0),
+             type a30 = static_cast<type>(0), type a31 = static_cast<type>(0), type a32 = static_cast<type>(0), type a33 = static_cast<type>(0)) 
+    {
+        m[0]  = a00; m[1]  = a01; m[2]  = a02; m[3]  = a03;
+        m[4]  = a10; m[5]  = a11; m[6]  = a12; m[7]  = a13;
+        m[8]  = a20; m[9]  = a21; m[10] = a22; m[11] = a23;
+        m[12] = a30; m[13] = a31; m[14] = a32; m[15] = a33;
+    }
+
+    mat4x4_t(const vec4_t<type>& row0,
+             const vec4_t<type>& row1,
+             const vec4_t<type>& row2,
+             const vec4_t<type>& row3)
+    {
+        this->row0 = row0;
+        this->row1 = row1;
+        this->row2 = row2;
+        this->row3 = row3;
+    }
+
+    mat4x4_t<type> operator+(const mat4x4_t<type>& rh) const;
+    mat4x4_t<type> operator-(const mat4x4_t<type>& rh) const;
+    mat4x4_t<type> operator*(const mat4x4_t<type>& rh) const;
+    
+    // Performs a column major order multiplication.
+    vec4_t<type>  operator*(const vec4_t<type>& rh) const;
+
+    type operator[](uint32_t index) const { return m[index]; }
+    type& operator[](uint32_t index) { return m[index]; }
 };
 
+template<typename type>
+vec4_t<type> operator*(const vec4_t<type>& lh, const mat4x4_t<type>& rh);
 
 template<typename type>
 struct axis_aligned_bounds2d_t
@@ -187,6 +226,41 @@ type_result minimum(const type0& a, const type1& b)
 {
     return static_cast<type_result>(a > b ? b : a);
 }
+
+template<typename type>
+vec3_t<type> cross(const vec3_t<type>& l, const vec3_t<type>& r);
+
+template<typename type>
+type dot(const vec3_t<type>& l, const vec3_t<type>& r);
+
+template<typename type>
+type dot(const vec4_t<type>& l, const vec4_t<type>& r);
+
+template<typename type>
+type length(const vec4_t<type>& o);
+
+template<typename type>
+type length(const vec3_t<type>& o);
+
+template<typename type>
+vec4_t<type> normalize(const vec4_t<type>& o);
+template<typename type>
+vec3_t<type> normalize(const vec3_t<type>& o);
+
+template<typename type>
+mat4x4_t<type> perspective_lh_aspect(type fov, type aspect, type ne, type fa);
+
+template<typename type>
+mat4x4_t<type> rotate(mat4x4_t<type>& origin, const vec3_t<type>& axis, type radians);
+
+template<typename type>
+mat4x4_t<type> translate(mat4x4_t<type>& origin, const vec3_t<type>& t);
+
+template<typename type>
+mat4x4_t<type> scale(mat4x4_t<type>& origin, const vec3_t<type>& s);
+
+template<typename type>
+mat4x4_t<type> identity();
 
 typedef axis_aligned_bounds2d_t<float>      fbounds2d_t;
 typedef axis_aligned_bounds2d_t<uint32_t>   ubounds2d_t;
@@ -231,9 +305,18 @@ typedef mat3x3_t<float>     float3x3_t;
 typedef mat3x3_t<uint32_t>  uint3x3_t;
 typedef mat3x3_t<int32_t>   int3x3_t;
 
+
+namespace {
+float deg_to_rad(float deg)
+{
+    return deg * ((float)SW_CONST_PI / 180.0f);
+}
+}
 // Triangle structure.
 struct triangle_t
 {
     float4_t v0, v1, v2;
 };
 } // swrast
+
+#include "Math.inl"

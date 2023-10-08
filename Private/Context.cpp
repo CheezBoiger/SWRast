@@ -120,15 +120,21 @@ resource_t allocate_resource(const resource_desc_t& desc)
 {
     resource_t res = 0;
     size_t size_bytes = desc.width * desc.height * desc.depth_or_array_size * desc.mip_count * format_size_bytes(desc.format);
+    // Allocate the size of the resource descriptor too.
+    size_bytes += sizeof(resource_desc_t);
     res = (resource_t)resource_allocator->allocate(size_bytes, 1);
     // the memory surface should be initialized to all zeroes.
     memset((void*)res, 0, size_bytes);
+    // Store description of the resource. The pass along the resource handle base.
+    *((resource_desc_t*)res) = desc;
+    res += sizeof(resource_desc_t);
     return res;
 }
 
 
 error_t release_resource(resource_t resource)
 {
+    resource -= sizeof(resource_desc_t);
     resource_allocator->free((void*)resource);
     return result_ok;
 }

@@ -69,6 +69,13 @@ protected:
         this->in_varying_stride_bytes = in_stride_bytes;
         this->in_pos_offset_bytes = in_pos_offset_bytes;
     }
+
+    //
+    float4_t texture2d(uint64_t texture, const float2_t& tex_coord)
+    {
+        return float4_t();
+    }
+
     uint32_t in_varying_stride_bytes;
     uint32_t in_pos_offset_bytes;
 };

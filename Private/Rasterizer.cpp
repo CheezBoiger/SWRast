@@ -191,16 +191,29 @@ error_t rasterizer_t::set_viewports(uint32_t num_viewports, viewport_t* viewport
 error_t render_output_t::shade_to_output(framebuffer_t& framebuffer, uint32_t index, const viewport_t& viewport, uint32_t x, uint32_t y, const float4_t& color)
 {
     resource_t render_target = framebuffer.bound_render_targets[index];
+    resource_desc_t* desc = (resource_desc_t*)(render_target - sizeof(resource_desc_t));
+    uintptr_t format_size = format_size_bytes(desc->format);
     uintptr_t ptr = render_target;
     // Address must be based on the format of the render target, for this we need to know ahead of time, what
     // that will be.
     // TODO: Need to perform the render output based on the byte stride format. Not the other way around!
-    const uintptr_t row_pitch = viewport.width * 4;
-    uintptr_t address = ptr + (x * 4 + (y * row_pitch));
-    ((uint8_t*)address)[0] = color.r * 255.f;
-    ((uint8_t*)address)[1] = color.g * 255.f;
-    ((uint8_t*)address)[2] = color.b * 255.f;
-    ((uint8_t*)address)[3] = color.a * 255.f;
+    const uintptr_t row_pitch = viewport.width * format_size;
+    uintptr_t address = ptr + (x * format_size + (y * row_pitch));
+
+    switch (desc->format)
+    {
+        case format_r8g8b8a8_unorm:
+        {
+            ((uint8_t*)address)[0] = color.r * 255.f;
+            ((uint8_t*)address)[1] = color.g * 255.f;
+            ((uint8_t*)address)[2] = color.b * 255.f;
+            ((uint8_t*)address)[3] = color.a * 255.f;
+            break;
+        }
+        default:
+            // Format is unknown, likely going to need to be skipped?
+            break;
+    }
     return result_ok;
 }
 
@@ -208,12 +221,22 @@ error_t render_output_t::shade_to_output(framebuffer_t& framebuffer, uint32_t in
 error_t render_output_t::write_to_depth_stencil(framebuffer_t& framebuffer, const viewport_t& viewport, uint32_t x_s, uint32_t y_s, float depth)
 {
     resource_t depth_stencil = framebuffer.bound_depth_stencil;
+    resource_desc_t* desc = (resource_desc_t*)(depth_stencil - sizeof(resource_desc_t));
+    uintptr_t format_size = format_size_bytes(desc->format);
     if (depth_stencil)
     {
         uintptr_t base_address = depth_stencil;
-        const uintptr_t row_pitch = viewport.width * 4;
-        uintptr_t address = base_address + (x_s * 4 + (y_s * row_pitch));
-        *((float*)address) = depth; 
+        const uintptr_t row_pitch = viewport.width * format_size;
+        uintptr_t address = base_address + (x_s * format_size + (y_s * row_pitch));
+        switch (desc->format)
+        {
+            case format_r32_float:
+                *((float*)address) = depth; 
+                break;
+            default:
+                // skipped?
+                break;
+        }
     }
     return result_failed;
 }
@@ -222,13 +245,23 @@ error_t render_output_t::write_to_depth_stencil(framebuffer_t& framebuffer, cons
 float render_output_t::read_depth_stencil(const framebuffer_t& framebuffer, const viewport_t& viewport, uint32_t x_s, uint32_t y_s)
 {
     const resource_t depth_stencil = framebuffer.bound_depth_stencil;
+    resource_desc_t* desc = (resource_desc_t*)(depth_stencil - sizeof(resource_desc_t));
+    uintptr_t format_size = format_size_bytes(desc->format);
     float value = 0.f;
     if (depth_stencil)
     {
         const uintptr_t base_address = depth_stencil;
-        const uintptr_t row_pitch = viewport.width * 4;
-        const uintptr_t address = base_address + (x_s * 4 + (y_s * row_pitch));
-        value = *((const float*)address); 
+        const uintptr_t row_pitch = viewport.width * format_size;
+        const uintptr_t address = base_address + (x_s * format_size + (y_s * row_pitch));
+        switch (desc->format)
+        {
+            case format_r32_float:
+                value = *((const float*)address); 
+                break;
+            default:
+                // skipped?
+                break;
+        }
     }
     return value;
 }
@@ -237,16 +270,17 @@ float render_output_t::read_depth_stencil(const framebuffer_t& framebuffer, cons
 error_t render_output_t::clear_render_target(framebuffer_t& framebuffer, uint32_t index, const rect_t& rect, const float4_t& clear_color)
 {
     resource_t rt = framebuffer.bound_render_targets[index];
+    resource_desc_t* resource_desc = (resource_desc_t*)(rt - sizeof(resource_desc_t));
     uint32_t r = (uint32_t)(clear_color.r * 255.f);
     uint32_t g = (uint32_t)(clear_color.g * 255.f);
     uint32_t b = (uint32_t)(clear_color.b * 255.f);
     uint32_t a = (uint32_t)(clear_color.a * 255.f);
     uint32_t rgba = (r) | (g << 8) | (b << 16) | (a << 24);
     // TODO: This needs to be configurable! Render target row_pitch needs to be the max width size!
-    uint32_t row_pitch = 800 * 4;
-    for (uint32_t y = rect.y; y < rect.height; ++y)
+    uint32_t row_pitch = resource_desc->width * 4;
+    for (uint32_t y = rect.y; y < rect.y + rect.height; ++y)
     {
-        for (uint32_t x = rect.x; x < rect.width; ++x)
+        for (uint32_t x = rect.x; x < rect.x + rect.width; ++x)
         {
             uint32_t* output = (uint32_t*)(((uintptr_t)rt) + (x * 4) + (y * row_pitch));
             *output = rgba;
