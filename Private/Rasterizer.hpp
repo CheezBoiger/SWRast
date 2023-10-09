@@ -131,6 +131,7 @@ public:
 
     render_output_t& get_rop() { return rop; }
 
+    void set_depth_compare_op(compare_op_t compare_op) { depth_compare = compare_op; }
 private:
     // Projects ndc coordinates to screen coordinates.
     float4_t ndc_to_screen(float4_t ndc_coord);
@@ -148,6 +149,7 @@ private:
     framebuffer_t m_bound_framebuffer;
     pixel_shader_t* m_bound_pixel_shader;
     viewport_t m_viewports[8];
+    compare_op_t depth_compare = compare_op_less;
     bool        m_depth_enabled = false;
     bool        m_depth_write_enabled = false;
 

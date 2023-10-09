@@ -18,12 +18,14 @@ public:
     {
         swrast::float3_t pos;
         swrast::float4_t color;
+        swrast::float2_t texcoord;
     };
 
     struct out_vert_t
     {
         swrast::float4_t color;
         swrast::float4_t pos;
+        swrast::float2_t texcoord;
     };
 
     void setup() override
@@ -38,11 +40,12 @@ public:
         swrast::float3_t c[] = { {1, 0, 0}, {0, 1, 0}, {0, 0, 1} }; 
         in_vert_t* in_vert = (in_vert_t*)in_vertex_ptr;
         out_vert_t* out = (out_vert_t*)out_vertex;
-        swrast::float4x4_t rot = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(0, 1, 0), swrast::deg_to_rad(45.f));
+        swrast::float4x4_t rot = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(0, 1, 0), swrast::deg_to_rad(60.f));
         swrast::float4x4_t t = swrast::translate<float>(swrast::identity<float>(), swrast::float3_t(0, 0, 2));
         out->pos = swrast::float4_t(in_vert->pos, 1.0f) * rot * t;
         out->pos = out->pos * proj;
         out->color = in_vert->color;
+        out->texcoord = in_vert->texcoord;
     }
 };
 
@@ -54,6 +57,7 @@ public:
     {
         swrast::float4_t color;
         swrast::float4_t pos;
+        swrast::float2_t texcoord;
     };
 
     virtual void setup() override
@@ -70,6 +74,9 @@ public:
         varying.color.g = varying_v0->color.g * barycentrics[0] + varying_v1->color.g * barycentrics[1] + varying_v2->color.g * barycentrics[2];
         varying.color.b = varying_v0->color.b * barycentrics[0] + varying_v1->color.b * barycentrics[1] + varying_v2->color.b * barycentrics[2];
         varying.color.a = 1;
+
+        varying.texcoord.s = varying_v0->texcoord.s * barycentrics[0] + varying_v1->texcoord.s * barycentrics[1] + varying_v2->texcoord.s * barycentrics[2];
+        varying.texcoord.t = varying_v0->texcoord.t * barycentrics[0] + varying_v1->texcoord.t * barycentrics[1] + varying_v2->texcoord.t * barycentrics[2];
     }
     // Should output the color. Ideally we want to pass in the 
     // screen space coordinates, which might be used for other processes.
@@ -77,7 +84,10 @@ public:
     // used for texturing as well.
     swrast::float4_t execute() override 
     {
-        return varying.color; 
+        const int M = 10;
+        // checkerboard pattern
+        float p = (fmod(varying.texcoord.s * M, 1.0) > 0.5) ^ (fmod(varying.texcoord.t * M, 1.0) < 0.5);
+        return swrast::float4_t(p, p, p, 1); 
     }
 private:
     in_varying_t varying;
@@ -87,7 +97,7 @@ int main(int c, char* argv[])
 {
     swrast::initialize();
     swrast::resource_desc_t resource_desc = { };
-    resource_desc.width = (sizeof(float) * 8) * 9;
+    resource_desc.width = (sizeof(float) * 10) * 9;
     resource_desc.height = 1;
     resource_desc.type = swrast::resource_type_buffer;
     resource_desc.mip_count = 1;
@@ -106,15 +116,18 @@ int main(int c, char* argv[])
     //swrast::shader_t ps = swrast::create_shader(swrast::shader_type_pixel, nullptr, 0);
     swrast::input_layout_t layout = 0;
     {
-        swrast::input_element_desc inputs[2];
+        swrast::input_element_desc inputs[3];
         inputs[0].format = swrast::format_r32g32b32_float;
         inputs[0].input_slot = 0;
         inputs[0].offset = 0;
         inputs[1].format = swrast::format_r32g32b32a32_float;
         inputs[1].input_slot = 0;
         inputs[1].offset = 12;
+        inputs[2].format = swrast::format_r32g32_float;
+        inputs[2].input_slot = 0;
+        inputs[2].offset = 28;
         
-        layout = swrast::create_input_layout(2, inputs);
+        layout = swrast::create_input_layout(3, inputs);
         std::vector<float> triangle = 
             { 
 #if WINDING_ORDER_COUNTER_CLOCKWISE
@@ -126,20 +139,20 @@ int main(int c, char* argv[])
                 -0.5f,   0.5f, 0.f, 1.f, 
                  0.0f,  -0.5f, 0.f, 1.f
 #else
-                 0.5f,  0.5f, 0.f,       0, 0, 1, 1,
-                -0.5f,  0.5f, 0.f,       0, 1, 0, 1,
-                 0.0f, -0.5f, 0.f,       1, 0, 0, 1,
+                 0.5f,  0.5f, 0.f,       0, 0, 1, 1,        0, 0,
+                -0.5f,  0.5f, 0.f,       0, 1, 0, 1,        0, 1,
+                 0.0f, -0.5f, 0.f,       1, 0, 0, 1,        1, 1,
 
-                 0.5f,  0.5f, 0.f,        1, 0, 0, 1,
-                 -0.5f, 0.5f, 0.f,     0, 0, 1, 1,
-                -0.5f,  -0.5f, 0.f,      0, 1, 0, 1,
+                 0.5f,  0.5f, 0.f,       1, 0, 0, 1,        0, 1,
+                 -0.5f, 0.5f, 0.f,       0, 0, 1, 1,        0, 0,
+                -0.5f,  -0.5f, 0.f,      0, 1, 0, 1,        1, 0,
 
-                 0.5f,   0.5f, 0.f,       1, 0, 0, 1,
-                -0.5f,  -0.5f, 0.f,     0, 1, 0, 1,
-                 0.5f,  -0.5f, 0.f,      0, 0, 1, 1
+                 0.5f,  -0.5f, 0.f,      0, 0, 1, 1,        0, 0,
+                 0.5f,   0.5f, 0.f,      1, 0, 0, 1,        1, 0,
+                -0.5f,  -0.5f, 0.f,      0, 1, 0, 1,        0, 1,
 #endif
             };
-       memcpy((void*)vb, triangle.data(), (sizeof(float) * 8) * 9);
+       memcpy((void*)vb, triangle.data(), (sizeof(float) * 10) * 9);
     }
 
     simple_vertex_t* vs = new simple_vertex_t();
@@ -164,6 +177,7 @@ int main(int c, char* argv[])
     clear_rect.height = viewport.height;
     swrast::clear_render_target(0, clear_rect, rgba);
     swrast::set_front_face(swrast::front_face_clockwise);
+    swrast::set_depth_compare(swrast::compare_op_greater);
     swrast::set_input_layout(layout);
     swrast::set_viewports(1, &viewport);
     swrast::bind_vertex_shader(vs);

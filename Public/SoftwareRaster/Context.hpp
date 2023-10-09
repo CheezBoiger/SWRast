@@ -78,7 +78,8 @@ enum format_t
     format_r32g32b32a32_float,
     format_r16g16b16a16_float,
     format_r11g11b10_float,
-    format_r32g32b32_float
+    format_r32g32b32_float,
+    format_r32g32_float,
 };
 
 
@@ -191,6 +192,7 @@ SW_EXPORT_DLL error_t       enable_depth_write(bool enable);
 
 SW_EXPORT_DLL error_t       set_primitive_topology(primitive_topology_t primitive_topology);
 SW_EXPORT_DLL error_t       set_front_face(front_face_t front_face);
+SW_EXPORT_DLL error_t       set_depth_compare(compare_op_t compare_op);
 
 SW_EXPORT_DLL input_layout_t create_input_layout(uint32_t num_elements, input_element_desc* descs);
 SW_EXPORT_DLL error_t        set_input_layout(input_layout_t layout);

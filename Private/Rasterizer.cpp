@@ -18,6 +18,27 @@ error_t clipper_t::clip_cull(vertices_t* inout_vertex_pool)
 }
 
 
+bool is_pass_depth_test(compare_op_t op, float dest_depth, float source_depth)
+{
+    switch (op)
+    {
+        case compare_op_equal:
+            return dest_depth == source_depth;
+        case compare_op_greater:
+            return source_depth > dest_depth; 
+        case compare_op_greater_equal:
+            return source_depth >= dest_depth;
+        case compare_op_less:
+            return source_depth < dest_depth;
+        case compare_op_less_equal:
+            return source_depth <= dest_depth;
+        default:
+            break;
+    }
+    return true;
+}
+
+
 float4_t rasterizer_t::clip_to_ndc(float4_t clip)
 {    
     // Perspective division is done in order to project to ndc space.
@@ -124,8 +145,8 @@ error_t rasterizer_t::raster(uint32_t num_triangles, vertices_t& vertices, front
 
                     if (m_depth_enabled)
                     {
-                        float value = rop.read_depth_stencil(m_bound_framebuffer, m_viewports[0], x_s, y_s);
-                        if (z < value)
+                        float dest_value = rop.read_depth_stencil(m_bound_framebuffer, m_viewports[0], x_s, y_s);
+                        if (!is_pass_depth_test(depth_compare, dest_value, z))
                         {
                             // Failed depth test, don't write to pixel.
                             continue;

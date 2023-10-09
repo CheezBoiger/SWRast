@@ -116,6 +116,13 @@ error_t set_primitive_topology(primitive_topology_t primitive_topology)
 }
 
 
+error_t set_depth_compare(compare_op_t compare_op)
+{
+    rasterizer.set_depth_compare_op(compare_op);
+    return result_ok;
+}
+
+
 resource_t allocate_resource(const resource_desc_t& desc)
 {
     resource_t res = 0;

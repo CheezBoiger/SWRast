@@ -16,6 +16,7 @@ size_t format_size_bytes(format_t format)
             return 4ull;
 
         case format_r16g16b16a16_float:
+        case format_r32g32_float:
             return 8ull;
 
         case format_r32g32b32a32_float:
