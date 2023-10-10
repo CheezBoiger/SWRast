@@ -146,6 +146,15 @@ enum front_face_t
 };
 
 
+enum cull_mode_t
+{
+    cull_mode_none,
+    cull_mode_front,
+    cull_mode_back,
+    cull_mode_front_and_back
+};
+
+
 struct input_element_desc
 {
     format_t format;
@@ -168,7 +177,7 @@ SW_EXPORT_DLL error_t       bind_render_targets(uint32_t num_rtvs, resource_t* r
 SW_EXPORT_DLL error_t       bind_depth_stencil(resource_t ds);
 
 SW_EXPORT_DLL error_t       clear_render_target(uint32_t slot, const rect_t& rect, float* rgba);
-SW_EXPORT_DLL error_t       clear_depth_stencil(float* bounds);
+SW_EXPORT_DLL error_t       clear_depth_stencil(float depth, const rect_t& rect);
 
 SW_EXPORT_DLL error_t       bind_vertex_buffers(uint32_t num_vbs, resource_t* vbs);
 SW_EXPORT_DLL error_t       bind_index_buffer(resource_t ib);
@@ -189,6 +198,8 @@ SW_EXPORT_DLL error_t       unmap_resource(resource_t resource);
 
 SW_EXPORT_DLL error_t       enable_depth(bool enable);
 SW_EXPORT_DLL error_t       enable_depth_write(bool enable);
+
+SW_EXPORT_DLL error_t       set_cull_mode(cull_mode_t cull_mode);
 
 SW_EXPORT_DLL error_t       set_primitive_topology(primitive_topology_t primitive_topology);
 SW_EXPORT_DLL error_t       set_front_face(front_face_t front_face);

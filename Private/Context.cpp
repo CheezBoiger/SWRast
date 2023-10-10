@@ -203,6 +203,12 @@ error_t clear_render_target(uint32_t index, const rect_t& rect, float* rgba)
 }
 
 
+error_t clear_depth_stencil(float depth, const rect_t& rect)
+{
+    return rasterizer.clear_depth_stencil(rect, depth);
+}
+
+
 input_layout_t create_input_layout(uint32_t num_elements, input_element_desc* descs)
 {
     input_layout* layout = assembler.create_input_layout(num_elements, descs);
@@ -214,6 +220,13 @@ error_t set_input_layout(input_layout_t layout)
 {
     input_layout* input = (input_layout*)layout;
     vertex_transformation.bind_input_layout(input);
+    return result_ok;
+}
+
+
+error_t set_cull_mode(cull_mode_t cull_mode)
+{
+    rasterizer.set_cull_mode(cull_mode);
     return result_ok;
 }
 } // 

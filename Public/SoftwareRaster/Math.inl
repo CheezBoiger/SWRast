@@ -180,4 +180,11 @@ mat4x4_t<type> identity()
         0, 0, 0, 1
     );
 }
+
+
+template<typename type>
+type clamp(type v, type mmin, type mmax)
+{
+    return ((v < mmin) ? mmin : (v > mmax ? mmax : v));
+}
 } // swrast

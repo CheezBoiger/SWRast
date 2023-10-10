@@ -262,6 +262,9 @@ mat4x4_t<type> scale(mat4x4_t<type>& origin, const vec3_t<type>& s);
 template<typename type>
 mat4x4_t<type> identity();
 
+template<typename type>
+type clamp(type v, type mmin, type mmax);
+
 typedef axis_aligned_bounds2d_t<float>      fbounds2d_t;
 typedef axis_aligned_bounds2d_t<uint32_t>   ubounds2d_t;
 typedef axis_aligned_bounds2d_t<int32_t>    ibounds2d_t; 

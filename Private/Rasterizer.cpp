@@ -96,25 +96,60 @@ error_t rasterizer_t::raster(uint32_t num_triangles, vertices_t& vertices, front
         float4_t v0_s = vertices.get_vertex_position(tri_id * 3 + 0);
         float4_t v1_s = vertices.get_vertex_position(tri_id * 3 + 1);
         float4_t v2_s = vertices.get_vertex_position(tri_id * 3 + 2);
-        // We use raster space to calculate the bounding box of the 
-        // triangle on screen, to which here we then perform the actual rasterization.
-        fbounds2d_t bounds = calculate_bounding_volume2d(v0_s, v1_s, v2_s);
 
         float area = winding_order == front_face_clockwise 
                                         ? edge_function(v0_s, v2_s, v1_s) 
                                         : edge_function(v0_s, v1_s, v2_s);
+        front_face_t current_order = winding_order;
+        // Negative area is flipped.
+        switch (cull_mode)
+        {
+            case cull_mode_back:
+            {
+                // Reverse the facing direction, when looking at back face.
+                area *= -1;
+                current_order = winding_order == front_face_clockwise ? front_face_counter_clockwise : front_face_clockwise;
+                break;
+            }
+            case cull_mode_none:
+            {
+                if (area < 0)
+                {
+                    area *= -1;
+                    current_order = winding_order == front_face_clockwise ? front_face_counter_clockwise : front_face_clockwise;
+                }
+                break;
+            }
+            case cull_mode_front_and_back:
+            {
+                if (area > 0) area *= -1;
+                break;
+            }
+            // Do nothing.
+            default:
+                break;
+        }
+
+        // Cull if area is negative.
+        if (area < 0)
+            continue;
+
+        // We use raster space to calculate the bounding box of the 
+        // triangle on screen, to which here we then perform the actual rasterization.
+        ibounds2d_t bounds = calculate_bounding_volume2d(v0_s, v1_s, v2_s);
+
         // This is not the most optimal way to rasterize a triangle, but it beats
         // traversing the entire framebuffer, in order to check for shaded fragments 
         // that are covered.
-        for (float y_s = bounds.minima.y; y_s < bounds.maxima.y; y_s += 1.0f)
+        for (int32_t y_s = bounds.minima.y; y_s < bounds.maxima.y; ++y_s)
         {
-            for (float x_s = bounds.minima.x; x_s < bounds.maxima.x; x_s += 1.0f)
+            for (int32_t x_s = bounds.minima.x; x_s < bounds.maxima.x; ++x_s)
             {
-                float2_t p = { x_s, y_s };
+                float2_t p = { (float)x_s + 0.5f, (float)y_s + 0.5f };
                 float w0 = 0.f;
                 float w1 = 0.f;
                 float w2 = 0.f;
-                switch (winding_order)
+                switch (current_order)
                 {
                     case front_face_counter_clockwise:                
                     {
@@ -188,13 +223,13 @@ float rasterizer_t::edge_function(const float2_t& a, const float2_t& b, const fl
 }
 
 
-fbounds2d_t rasterizer_t::calculate_bounding_volume2d(const float2_t& a, const float2_t& b, const float2_t& c)
+ibounds2d_t rasterizer_t::calculate_bounding_volume2d(const float2_t& a, const float2_t& b, const float2_t& c)
 {
-    fbounds2d_t bounds;
-    bounds.maxima.x = maximum<float>(maximum<float>(a.x, b.x), c.x) + 0.5f;
-    bounds.maxima.y = maximum<float>(maximum<float>(a.y, b.y), c.y) + 0.5f;
-    bounds.minima.x = minimum<float>(minimum<float>(a.x, b.x), c.x) + 0.5f;
-    bounds.minima.y = minimum<float>(minimum<float>(a.y, b.y), c.y) + 0.5f;
+    ibounds2d_t bounds;
+    bounds.maxima.x = (int32_t)clamp<float>(maximum<float>(maximum<float>(a.x, b.x), c.x), 0.f, m_viewports[0].width);
+    bounds.maxima.y = (int32_t)clamp<float>(maximum<float>(maximum<float>(a.y, b.y), c.y), 0.f, m_viewports[0].height);
+    bounds.minima.x = (int32_t)clamp<float>(minimum<float>(minimum<float>(a.x, b.x), c.x), 0.f, m_viewports[0].width);
+    bounds.minima.y = (int32_t)clamp<float>(minimum<float>(minimum<float>(a.y, b.y), c.y), 0.f, m_viewports[0].height);
     return bounds;
 }
 
@@ -292,21 +327,42 @@ error_t render_output_t::clear_render_target(framebuffer_t& framebuffer, uint32_
 {
     resource_t rt = framebuffer.bound_render_targets[index];
     resource_desc_t* resource_desc = (resource_desc_t*)(rt - sizeof(resource_desc_t));
+    uint32_t format_size = format_size_bytes(resource_desc->format);
     uint32_t r = (uint32_t)(clear_color.r * 255.f);
     uint32_t g = (uint32_t)(clear_color.g * 255.f);
     uint32_t b = (uint32_t)(clear_color.b * 255.f);
     uint32_t a = (uint32_t)(clear_color.a * 255.f);
     uint32_t rgba = (r) | (g << 8) | (b << 16) | (a << 24);
     // TODO: This needs to be configurable! Render target row_pitch needs to be the max width size!
-    uint32_t row_pitch = resource_desc->width * 4;
+    uint32_t row_pitch = resource_desc->width * format_size;
     for (uint32_t y = rect.y; y < rect.y + rect.height; ++y)
     {
         for (uint32_t x = rect.x; x < rect.x + rect.width; ++x)
         {
-            uint32_t* output = (uint32_t*)(((uintptr_t)rt) + (x * 4) + (y * row_pitch));
+            uint32_t* output = (uint32_t*)(((uintptr_t)rt) + (x * format_size) + (y * row_pitch));
             *output = rgba;
         }
     }
+    return result_ok;
+}
+
+
+error_t render_output_t::clear_depth_stencil(framebuffer_t& framebuffer, const rect_t& rect, float depth)
+{   
+    resource_t ds = framebuffer.bound_depth_stencil;
+    resource_desc_t* resource_desc = (resource_desc_t*)(ds - sizeof(resource_desc_t));
+    uint32_t format_size = format_size_bytes(resource_desc->format);
+    // TODO: This needs to be configurable! Render target row_pitch needs to be the max width size!
+    uint32_t row_pitch = resource_desc->width * format_size;
+    for (uint32_t y = rect.y; y < rect.y + rect.height; ++y)
+    {
+        for (uint32_t x = rect.x; x < rect.x + rect.width; ++x)
+        {
+            uint32_t* output = (uint32_t*)(((uintptr_t)ds) + (x * format_size) + (y * row_pitch));
+            *output = depth;
+        }
+    }
+    return result_ok;
     return result_ok;
 }
 } // swrast

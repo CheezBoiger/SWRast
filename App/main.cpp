@@ -40,7 +40,7 @@ public:
         swrast::float3_t c[] = { {1, 0, 0}, {0, 1, 0}, {0, 0, 1} }; 
         in_vert_t* in_vert = (in_vert_t*)in_vertex_ptr;
         out_vert_t* out = (out_vert_t*)out_vertex;
-        swrast::float4x4_t rot = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(0, 1, 0), swrast::deg_to_rad(60.f));
+        swrast::float4x4_t rot = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(0, 1, 0), swrast::deg_to_rad(45.f));
         swrast::float4x4_t t = swrast::translate<float>(swrast::identity<float>(), swrast::float3_t(0, 0, 2));
         out->pos = swrast::float4_t(in_vert->pos, 1.0f) * rot * t;
         out->pos = out->pos * proj;
@@ -139,6 +139,7 @@ int main(int c, char* argv[])
                 -0.5f,   0.5f, 0.f, 1.f, 
                  0.0f,  -0.5f, 0.f, 1.f
 #else
+                // Position              Color              TexCoord
                  0.5f,  0.5f, 0.f,       0, 0, 1, 1,        0, 0,
                 -0.5f,  0.5f, 0.f,       0, 1, 0, 1,        0, 1,
                  0.0f, -0.5f, 0.f,       1, 0, 0, 1,        1, 1,
@@ -176,8 +177,10 @@ int main(int c, char* argv[])
     clear_rect.width = viewport.width;
     clear_rect.height = viewport.height;
     swrast::clear_render_target(0, clear_rect, rgba);
+    swrast::clear_depth_stencil(0.f, clear_rect);
     swrast::set_front_face(swrast::front_face_clockwise);
     swrast::set_depth_compare(swrast::compare_op_greater);
+    swrast::set_cull_mode(swrast::cull_mode_none);
     swrast::set_input_layout(layout);
     swrast::set_viewports(1, &viewport);
     swrast::bind_vertex_shader(vs);

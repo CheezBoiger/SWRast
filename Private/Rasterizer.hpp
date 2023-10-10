@@ -40,7 +40,7 @@ public:
     // Clear a render target in the framebuffer.
     error_t clear_render_target(framebuffer_t& framebuffer, uint32_t index, const rect_t& rect, const float4_t& clear_color);
     // Clear depth stencil in the frame buffer.
-    error_t clear_depth_stencil(framebuffer_t& framebuffer, const float2_t& clear_ds);
+    error_t clear_depth_stencil(framebuffer_t& framebuffer, const rect_t& rect, float depth);
 private:
     
 };
@@ -128,17 +128,18 @@ public:
     void enable_write_depth(bool enable) { m_depth_write_enabled = enable;  }
 
     error_t clear_render_target(uint32_t index, const rect_t& rect, const float4_t& clear_color) { return rop.clear_render_target(m_bound_framebuffer, index, rect, clear_color); }
-
+    error_t clear_depth_stencil(const rect_t& rect, float depth) { return rop.clear_depth_stencil(m_bound_framebuffer, rect, depth); }
     render_output_t& get_rop() { return rop; }
 
     void set_depth_compare_op(compare_op_t compare_op) { depth_compare = compare_op; }
+    void set_cull_mode(cull_mode_t cull) { cull_mode = cull; }
 private:
     // Projects ndc coordinates to screen coordinates.
     float4_t ndc_to_screen(float4_t ndc_coord);
     float4_t clip_to_ndc(float4_t clip);
 
     // calculate the bounding volume of a triangle, with the given 3 points in screen space.
-    fbounds2d_t calculate_bounding_volume2d(const float2_t& a, const float2_t& b, const float2_t& c);
+    ibounds2d_t calculate_bounding_volume2d(const float2_t& a, const float2_t& b, const float2_t& c);
 
     // Find the edge bounds of the triangle. This calculates if a point is within
     // the area of the triangle.
@@ -150,6 +151,7 @@ private:
     pixel_shader_t* m_bound_pixel_shader;
     viewport_t m_viewports[8];
     compare_op_t depth_compare = compare_op_less;
+    cull_mode_t     cull_mode = cull_mode_none;
     bool        m_depth_enabled = false;
     bool        m_depth_write_enabled = false;
 
