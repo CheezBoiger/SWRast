@@ -41,7 +41,7 @@ public:
         in_vert_t* in_vert = (in_vert_t*)in_vertex_ptr;
         out_vert_t* out = (out_vert_t*)out_vertex;
         swrast::float4x4_t rot = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(0, 1, 0), swrast::deg_to_rad(45.f));
-        swrast::float4x4_t t = swrast::translate<float>(swrast::identity<float>(), swrast::float3_t(0, 0, 2));
+        swrast::float4x4_t t = swrast::translate<float>(swrast::identity<float>(), swrast::float3_t(0, 0, 1.5));
         out->pos = swrast::float4_t(in_vert->pos, 1.0f) * rot * t;
         out->pos = out->pos * proj;
         out->color = in_vert->color;
@@ -104,8 +104,8 @@ int main(int c, char* argv[])
     resource_desc.depth_or_array_size = 1;
     swrast::resource_t vb = swrast::allocate_resource(resource_desc);
 
-    resource_desc.width = 1200;
-    resource_desc.height = 800;
+    resource_desc.width = 1920;
+    resource_desc.height = 1080;
     resource_desc.format = swrast::format_r8g8b8a8_unorm;
     swrast::resource_t rt = swrast::allocate_resource(resource_desc);
    
@@ -161,12 +161,12 @@ int main(int c, char* argv[])
     simple_pixel_t* ps = new simple_pixel_t();
     ps->setup();
 
-    vs->proj = swrast::perspective_lh_aspect(swrast::deg_to_rad(45.0f), 1200.f/800.f, 0.001f, 1000.0f);
+    vs->proj = swrast::perspective_lh_aspect(swrast::deg_to_rad(45.0f), 1920.f/1080.f, 0.001f, 1000.0f);
 
     swrast::viewport_t viewport = { };
     viewport.x = viewport.y = 0;
-    viewport.width = 1200;
-    viewport.height = 800;
+    viewport.width = 1920;
+    viewport.height = 1080;
     viewport.near = 0.0000f;
     viewport.far = 1.0f;
     swrast::bind_render_targets(1, &rt, ds);
