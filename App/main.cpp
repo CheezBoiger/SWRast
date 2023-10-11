@@ -11,8 +11,7 @@
 class simple_vertex_t : public swrast::vertex_shader_t
 {
 public:
-    swrast::float4x4_t proj;
-    swrast::float4x4_t view;
+    swrast::float4x4_t mvp;
 
     struct in_vert_t
     {
@@ -40,10 +39,7 @@ public:
         swrast::float3_t c[] = { {1, 0, 0}, {0, 1, 0}, {0, 0, 1} }; 
         in_vert_t* in_vert = (in_vert_t*)in_vertex_ptr;
         out_vert_t* out = (out_vert_t*)out_vertex;
-        swrast::float4x4_t rot = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(0, 1, 0), swrast::deg_to_rad(45.f));
-        swrast::float4x4_t t = swrast::translate<float>(swrast::identity<float>(), swrast::float3_t(0, 0, 1.5));
-        out->pos = swrast::float4_t(in_vert->pos, 1.0f) * rot * t;
-        out->pos = out->pos * proj;
+        out->pos = swrast::float4_t(in_vert->pos, 1.0f) * mvp;
         out->color = in_vert->color;
         out->texcoord = in_vert->texcoord;
     }
@@ -53,6 +49,7 @@ public:
 class simple_pixel_t : public swrast::pixel_shader_t
 {
 public:
+    swrast::resource_t m_texture;
     struct in_varying_t
     {
         swrast::float4_t color;
@@ -63,6 +60,7 @@ public:
     virtual void setup() override
     {
         set_varying_info(sizeof(in_varying_t), sizeof(swrast::float4_t));
+        m_texture = 0;
     }
 
     virtual void interpolate_varying(uintptr_t v0, uintptr_t v1, uintptr_t v2, const swrast::float3_t& barycentrics) override
@@ -84,10 +82,12 @@ public:
     // used for texturing as well.
     swrast::float4_t execute() override 
     {
-        const int M = 10;
         // checkerboard pattern
-        float p = (fmod(varying.texcoord.s * M, 1.0) > 0.5) ^ (fmod(varying.texcoord.t * M, 1.0) < 0.5);
-        return swrast::float4_t(p, p, p, 1); 
+        //const int M = 10;
+        //float p = (fmod(varying.texcoord.s * M, 1.0) > 0.5) ^ (fmod(varying.texcoord.t * M, 1.0) < 0.5);
+        //return swrast::float4_t(p, p, p, 1); 
+        swrast::float4_t color = textureFetch(m_texture, varying.texcoord);
+        return color;
     }
 private:
     in_varying_t varying;
@@ -111,6 +111,21 @@ int main(int c, char* argv[])
    
     resource_desc.format = swrast::format_r32_float;
     swrast::resource_t ds = swrast::allocate_resource(resource_desc);
+
+    resource_desc.format = swrast::format_r8g8b8a8_unorm;
+    resource_desc.width = 128;
+    resource_desc.height = 128;
+    swrast::resource_t tex = swrast::allocate_resource(resource_desc);
+
+    for (uint32_t y = 0; y < 128; ++y)
+    {
+        for (uint32_t x = 0; x < 128; ++x)
+        {
+            uint32_t c = (((y & 0x8) == 0) ^ ((x & 0x8)  == 0)) * 255;
+            uint32_t* address = (uint32_t*)(tex + x * 4 + (128 * 4 * y));
+            *address = ((c) | (c << 8) | (c << 16) | (255 << 24));
+        }
+    }
 
     //swrast::shader_t vs = swrast::create_shader(swrast::shader_type_vertex, nullptr, 0);
     //swrast::shader_t ps = swrast::create_shader(swrast::shader_type_pixel, nullptr, 0);
@@ -160,8 +175,12 @@ int main(int c, char* argv[])
     vs->setup();
     simple_pixel_t* ps = new simple_pixel_t();
     ps->setup();
+    ps->m_texture = tex;
 
-    vs->proj = swrast::perspective_lh_aspect(swrast::deg_to_rad(45.0f), 1920.f/1080.f, 0.001f, 1000.0f);
+    swrast::float4x4_t rot = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(1, 0, 0), swrast::deg_to_rad(90.f));
+    swrast::float4x4_t t = swrast::translate<float>(swrast::identity<float>(), swrast::float3_t(0, 0.25, 1.5));
+    swrast::float4x4_t model = rot * t;
+    vs->mvp =  model * swrast::perspective_lh_aspect(swrast::deg_to_rad(45.0f), 1920.f/1080.f, 0.001f, 1000.0f);
 
     swrast::viewport_t viewport = { };
     viewport.x = viewport.y = 0;
@@ -192,6 +211,7 @@ int main(int c, char* argv[])
 
     int err = stbi_write_png("img.png", viewport.width, viewport.height, 4, (void*)rt, viewport.width * 4);
     err = stbi_write_png("depth.png", viewport.width, viewport.height, 4, (void*)ds, viewport.width * 4);
+    swrast::release_resource(tex);
     swrast::release_resource(ds);
     swrast::release_resource(vb);
     swrast::release_resource(rt);

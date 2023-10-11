@@ -1,7 +1,7 @@
 //
 #pragma once
 
-#include "Context.hpp"
+#include "Core.hpp"
 #include "Math.hpp"
 
 namespace swrast {
@@ -71,9 +71,36 @@ protected:
     }
 
     //
-    float4_t texture2d(uint64_t texture, const float2_t& tex_coord)
+    float4_t textureFetch(uintptr_t texture, const float2_t& tex_coord)
     {
-        return float4_t();
+        float4_t texel_color = float4_t();
+        if (texture != 0)
+        {
+            resource_desc_t* desc = (resource_desc_t*)(texture - sizeof(resource_desc_t));
+            const uint32_t width = desc->width;
+            const uint32_t height = desc->height;
+            const uint32_t format_size = format_size_bytes(desc->format);
+            const uint32_t row_pitch = width * format_size;
+            uint32_t x = (uint32_t)(tex_coord.s * (float)width);
+            uint32_t y = (uint32_t)(tex_coord.t * (float)height);
+            uintptr_t texel_address = texture + (x * format_size) + (row_pitch * y);
+            switch (desc->format)
+            {
+                case format_r8g8b8a8_unorm:
+                {
+                    uint32_t color = *(uint32_t*)texel_address;
+                    float inv = 1.f / 255.f;
+                    texel_color.r = (float)((color & 0x000000ff)) * inv;
+                    texel_color.g = (float)((color & 0x0000ff00) >> 8) * inv;
+                    texel_color.b = (float)((color & 0x00ff0000) >> 16) * inv;
+                    texel_color.a = (float)((color & 0xff000000) >> 24) * inv;
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+        return texel_color;
     }
 
     uint32_t in_varying_stride_bytes;

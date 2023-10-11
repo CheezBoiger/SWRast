@@ -8,9 +8,6 @@
 
 namespace swrast {
 
-
-extern size_t format_size_bytes(format_t format);
-
 struct input_buffer_desc
 {
     uint32_t stride_bytes;

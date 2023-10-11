@@ -12,6 +12,7 @@ set ( SW_RASTER_BUILD_FILES
 	${SW_RASTER_SOURCE_DIR}/ShaderOps.cpp
 	${SW_RASTER_SOURCE_DIR}/Context.cpp
 	${SW_RASTER_INCLUDE_DIR}/Math.hpp
+	${SW_RASTER_INCLUDE_DIR}/Core.hpp
 	${SW_RASTER_SOURCE_DIR}/Allocator.hpp
 	${SW_RASTER_SOURCE_DIR}/Allocator.cpp
 	${SW_RASTER_SOURCE_DIR}/Memory.cpp
