@@ -198,4 +198,11 @@ type clamp(type v, type mmin, type mmax)
 {
     return ((v < mmin) ? mmin : (v > mmax ? mmax : v));
 }
+
+
+template<typename type>
+vec2_t<type> floor(const vec2_t<type>& o)
+{
+    return vec2_t<type>(floorf(o[0]), floorf(o[1]));
+}
 } // swrast

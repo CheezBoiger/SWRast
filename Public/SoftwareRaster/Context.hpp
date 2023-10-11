@@ -14,7 +14,7 @@ SW_EXPORT_DLL error_t       release_resource(resource_t resource);
 
 SW_EXPORT_DLL error_t       set_viewports(uint32_t count, viewport_t* viewports);
 
-SW_EXPORT_DLL sampler_t     create_sampler();
+SW_EXPORT_DLL sampler_t     create_sampler(const sampler_desc_t& desc);
 SW_EXPORT_DLL error_t       destroy_sampler(sampler_t sampler);
 
 SW_EXPORT_DLL error_t       bind_render_targets(uint32_t num_rtvs, resource_t* rtvs, resource_t dsv);

@@ -86,7 +86,10 @@ public:
         //const int M = 10;
         //float p = (fmod(varying.texcoord.s * M, 1.0) > 0.5) ^ (fmod(varying.texcoord.t * M, 1.0) < 0.5);
         //return swrast::float4_t(p, p, p, 1); 
-        swrast::float4_t color = textureFetch(m_texture, varying.texcoord);
+        //swrast::float4_t color = textureFetch(m_texture, varying.texcoord);
+        swrast::sampler_desc_t desc;
+        desc.filter = swrast::sampler_filter_linear;
+        swrast::float4_t color = texture2d(m_texture, desc, varying.texcoord);
         return color;
     }
 private:

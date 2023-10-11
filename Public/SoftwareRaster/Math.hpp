@@ -24,6 +24,13 @@ struct vec2_t
     vec2_t(type x = static_cast<type>(0), type y = static_cast<type>(0))
         : x(x), y(y)
     { }
+    
+    template<typename o>
+    vec2_t(const vec2_t<o>& other)
+        : x(static_cast<type>(other[0]))
+        , y(static_cast<type>(other[1]))
+    { }
+
     type& operator[](size_t i) { return (&x)[i]; }
     type operator[](size_t i) const { return (&x)[i]; }
     vec2_t operator+(const vec2_t& rh) const { return vec2_t(x + rh.x, y + rh.y); }
@@ -49,6 +56,14 @@ struct vec3_t
     vec3_t(type x = static_cast<type>(0), type y = static_cast<type>(0), type z = static_cast<type>(0))
         : x(x), y(y), z(z)
     { }
+
+    template<typename o>
+    vec3_t(const vec3_t<o>& other)
+        : x(static_cast<type>(other[0]))
+        , y(static_cast<type>(other[1]))
+        , z(static_cast<type>(other[2]))
+    { }
+
     type& operator[](size_t i) { return (&x)[i]; }
     type operator[](size_t i) const { return (&x)[i]; }
     vec3_t operator+(const vec3_t& rh) const { return vec3_t(x + rh.x, y + rh.y, z + rh.z); }
@@ -83,6 +98,15 @@ struct vec4_t
     vec4_t(const vec3_t<type>& comp3, type w = static_cast<type>(0))
         : x(comp3[0]), y(comp3[1]), z(comp3[2]), w(w) 
     { }
+
+    template<typename o>
+    vec4_t(const vec4_t<o>& other)
+        : x(static_cast<type>(other[0]))
+        , y(static_cast<type>(other[1]))
+        , z(static_cast<type>(other[2]))
+        , w(static_cast<type>(other[3]))
+    { }   
+
     type& operator[](size_t i) { return (&x)[i]; }
     type operator[](size_t i) const { return (&x)[i]; }
     vec4_t operator+(const vec4_t& rh) const { return vec4_t(x + rh.x, y + rh.y, z + rh.z, w + rh.w); }
@@ -264,6 +288,9 @@ mat4x4_t<type> identity();
 
 template<typename type>
 type clamp(type v, type mmin, type mmax);
+
+template<typename type>
+vec2_t<type> floor(const vec2_t<type>& v);
 
 typedef axis_aligned_bounds2d_t<float>      fbounds2d_t;
 typedef axis_aligned_bounds2d_t<uint32_t>   ubounds2d_t;

@@ -161,5 +161,30 @@ struct input_element_desc
 };
 
 
+enum sampler_filter_t
+{
+    sampler_filter_point,
+    sampler_filter_linear
+};
+
+
+enum texture_address_mode_t
+{
+    texture_address_mode_wrap,
+    texture_address_mode_mirror,
+    texture_address_mode_clamp,
+    texture_address_mode_border
+};
+
+
+struct sampler_desc_t
+{
+    texture_address_mode_t address_u;
+    texture_address_mode_t address_v;
+    texture_address_mode_t address_w;
+    sampler_filter_t filter;
+};
+
+
 SW_EXPORT_DLL size_t format_size_bytes(format_t format);
 } // swrast

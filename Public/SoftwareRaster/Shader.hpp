@@ -63,6 +63,48 @@ public:
     // used for texturing as well.
     virtual float4_t execute() = 0;
 
+
+private:
+    float4_t rgba8_to_norm(uint32_t color)
+    {
+        float4_t result;
+        float inv = 1.f / 255.f;
+        result.r = (float)((color & 0x000000ff)) * inv;
+        result.g = (float)((color & 0x0000ff00) >> 8) * inv;
+        result.b = (float)((color & 0x00ff0000) >> 16) * inv;
+        result.a = (float)((color & 0xff000000) >> 24) * inv;
+        return result;
+    }
+    
+    float4_t texel_to_color(uintptr_t texel, format_t format)
+    {
+        float4_t result;
+        switch (format)
+        {
+            case format_r8g8b8a8_unorm:
+            {
+                uint32_t color = *(uint32_t*)texel;
+                result = rgba8_to_norm(color);
+                break;
+            }
+            default:
+                break;
+        }
+        return result;
+    }
+
+    float2_t denorm_coordinate(const float2_t& uv, const float2_t& tex_size)
+    {
+        float x = uv[0] * tex_size[0];
+        float y = uv[1] * tex_size[1];
+        return float2_t(x, y);
+    }
+
+    uintptr_t texel(uintptr_t texture, const uint2_t& c_s, uint32_t format_size, uint32_t row_pitch)
+    {
+        return texture + (c_s[0] * format_size) + (row_pitch * c_s[1]);
+    }
+
 protected:
     void set_varying_info(uint32_t in_stride_bytes, uint32_t in_pos_offset_bytes)
     {
@@ -77,27 +119,49 @@ protected:
         if (texture != 0)
         {
             resource_desc_t* desc = (resource_desc_t*)(texture - sizeof(resource_desc_t));
-            const uint32_t width = desc->width;
-            const uint32_t height = desc->height;
+            const float2_t tex_size = float2_t(desc->width, desc->height);
             const uint32_t format_size = format_size_bytes(desc->format);
-            const uint32_t row_pitch = width * format_size;
-            uint32_t x = (uint32_t)(tex_coord.s * (float)width);
-            uint32_t y = (uint32_t)(tex_coord.t * (float)height);
-            uintptr_t texel_address = texture + (x * format_size) + (row_pitch * y);
-            switch (desc->format)
+            const uint32_t row_pitch = tex_size[0] * format_size;
+            float2_t denorm = denorm_coordinate(tex_coord, tex_size);
+            texel_color = texel_to_color(texel(texture, uint2_t(denorm), format_size, row_pitch), desc->format);
+        }
+        return texel_color;
+    }
+
+    float4_t texture2d(uintptr_t texture, const sampler_desc_t& sampler, const float2_t& tex_coord)
+    {
+        float4_t texel_color = float4_t();
+        if (texture != 0)
+        {
+            resource_desc_t* desc = (resource_desc_t*)(texture - sizeof(resource_desc_t));
+            const float2_t tex_size = float2_t(desc->width, desc->height);
+            const uint32_t format_size = format_size_bytes(desc->format);
+            const uint32_t row_pitch = tex_size[0] * format_size;
+            float2_t denorm = denorm_coordinate(tex_coord, tex_size);
+
+            switch (sampler.filter)
             {
-                case format_r8g8b8a8_unorm:
+                case sampler_filter_linear:
                 {
-                    uint32_t color = *(uint32_t*)texel_address;
-                    float inv = 1.f / 255.f;
-                    texel_color.r = (float)((color & 0x000000ff)) * inv;
-                    texel_color.g = (float)((color & 0x0000ff00) >> 8) * inv;
-                    texel_color.b = (float)((color & 0x00ff0000) >> 16) * inv;
-                    texel_color.a = (float)((color & 0xff000000) >> 24) * inv;
+                    float2_t half_pixel = float2_t(0.5f, 0.5f);
+                    float2_t v_cell = floor(denorm);
+                    float2_t offset = denorm - v_cell;
+                    float4_t c_tl = texel_to_color(texel(texture, uint2_t(v_cell) + uint2_t(0, 0), format_size, row_pitch), desc->format);
+                    float4_t c_tr = texel_to_color(texel(texture, uint2_t(v_cell) + uint2_t(1, 0), format_size, row_pitch), desc->format);
+                    float4_t c_bl = texel_to_color(texel(texture, uint2_t(v_cell) + uint2_t(0, 1), format_size, row_pitch), desc->format);
+                    float4_t c_br = texel_to_color(texel(texture, uint2_t(v_cell) + uint2_t(1, 1), format_size, row_pitch), desc->format);
+            
+                    float4_t c_tx = c_tr * offset[0] + c_tl * (1 - offset[0]);
+                    float4_t c_bx = c_br * offset[0] + c_bl * (1 - offset[0]);
+                    texel_color = c_bx * offset[1] + c_tx * (1 - offset[1]);
                     break;
                 }
+                case sampler_filter_point:
                 default:
+                {
+                    texel_color = textureFetch(texture, tex_coord);
                     break;
+                }
             }
         }
         return texel_color;
