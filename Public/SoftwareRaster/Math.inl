@@ -148,6 +148,17 @@ vec4_t<type> operator*(const vec4_t<type>& lh, const mat4x4_t<type>& rh)
 
 
 template<typename type>
+mat4x4_t<type> scale(mat4x4_t<type>& origin, const vec3_t<type>& s)
+{
+    mat4x4_t<type> o = origin;
+    o[0]  *= s.x;
+    o[5]  *= s.y;
+    o[10] *= s.z;
+    return o;
+}
+
+
+template<typename type>
 type dot(const vec3_t<type>& l, const vec3_t<type>& r)
 {
     return (l[0] * r[0]) + (l[1] * r[1]) + (l[2] * r[2]);

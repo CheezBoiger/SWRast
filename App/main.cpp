@@ -155,9 +155,9 @@ int main(int c, char* argv[])
                  0.0f,  -0.5f, 0.f, 1.f
 #else
                 // Position              Color              TexCoord
-                 0.5f,  0.5f, 0.f,       0, 0, 1, 1,        0, 0,
-                -0.5f,  0.5f, 0.f,       0, 1, 0, 1,        0, 1,
-                 0.0f, -0.5f, 0.f,       1, 0, 0, 1,        1, 1,
+                 0.5f,  0.5f, 0.f,       0, 0, 1, 1,        1, 0,
+                -0.5f,  0.5f, 0.f,       0, 1, 0, 1,        1, 1,
+                 0.0f, -0.5f, 0.f,       1, 0, 0, 1,        0, 0.5,
 
                  0.5f,  0.5f, 0.f,       1, 0, 0, 1,        0, 1,
                  -0.5f, 0.5f, 0.f,       0, 0, 1, 1,        0, 0,
@@ -207,9 +207,17 @@ int main(int c, char* argv[])
     swrast::enable_depth(true);
     swrast::enable_depth_write(true);
     swrast::bind_vertex_buffers(1, &vb);
+    // Draws the rectangle.
     swrast::draw_instanced(6, 1, 3, 0);
+    // Rotate the other triangle.
+    rot = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(0, 0, 1), swrast::deg_to_rad(45.f));
+    t = swrast::translate<float>(swrast::identity<float>(), swrast::float3_t(0, 0.2, 1.5));
+    swrast::float4x4_t s = swrast::scale(swrast::identity<float>(), swrast::float3_t(0.5, 0.5, 0.5));
+    vs->mvp = s * rot * t * swrast::perspective_lh_aspect(swrast::deg_to_rad(45.0f), 1920.f/1080.f, 0.001f, 1000.0f);
+    swrast::draw_instanced(3, 1, 0, 0);
 
     int err = stbi_write_png("img.png", viewport.width, viewport.height, 4, (void*)rt, viewport.width * 4);
+
     err = stbi_write_png("depth.png", viewport.width, viewport.height, 4, (void*)ds, viewport.width * 4);
     swrast::release_resource(tex);
     swrast::release_resource(ds);

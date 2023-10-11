@@ -175,9 +175,8 @@ error_t rasterizer_t::raster(uint32_t num_triangles, vertices_t& vertices, front
                     w2 /= area;
 
                     // linearly interpolate z and w
-                    float z = v0_s.z * w0 + v1_s.z * w1 + v2_s.z * w2;
                     float w_inv = 1.f / (w0 * v0_s.w + w1 * v1_s.w + w2 * v2_s.w);
-
+                    float z = 1.f / (v0_s.z * w0 + v1_s.z * w1 + v2_s.z * w2);
                     if (m_depth_enabled)
                     {
                         float dest_value = rop.read_depth_stencil(m_bound_framebuffer, m_viewports[0], x_s, y_s);
