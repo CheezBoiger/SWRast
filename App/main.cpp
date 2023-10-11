@@ -89,6 +89,9 @@ public:
         //swrast::float4_t color = textureFetch(m_texture, varying.texcoord);
         swrast::sampler_desc_t desc;
         desc.filter = swrast::sampler_filter_linear;
+        desc.address_u = swrast::texture_address_mode_mirror;
+        desc.address_v = swrast::texture_address_mode_mirror;
+        varying.texcoord = varying.texcoord * 2.5f;
         swrast::float4_t color = texture2d(m_texture, desc, varying.texcoord);
         return color;
     }

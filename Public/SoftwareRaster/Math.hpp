@@ -1,6 +1,7 @@
 //
 #pragma once
 #include <cstdint>
+#include <cmath>
 
 #define SW_CONST_PI                3.141592653589793238462643383279502884197169399375
 #define SW_CONST_PI_HALF           1.57079632679489661923   // pi/2
@@ -288,6 +289,9 @@ mat4x4_t<type> identity();
 
 template<typename type>
 type clamp(type v, type mmin, type mmax);
+
+template<typename type>
+vec2_t<type> clamp(const vec2_t<type>& v, const vec2_t<type>& mmin, const vec2_t<type>& mmax); 
 
 template<typename type>
 vec2_t<type> floor(const vec2_t<type>& v);

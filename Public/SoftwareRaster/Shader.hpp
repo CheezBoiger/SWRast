@@ -105,6 +105,40 @@ private:
         return texture + (c_s[0] * format_size) + (row_pitch * c_s[1]);
     }
 
+    uint filter_texel_coord(uint coord, uint size, texture_address_mode_t address_mode)
+    {
+        switch (address_mode)
+        {
+            case texture_address_mode_clamp:
+            {
+                coord = clamp(coord, (uint)0, size - 1);
+                break;
+            }
+            case texture_address_mode_wrap:
+            {
+                coord = (uint)fabs((float)(coord % size));
+                break;
+            }
+            case texture_address_mode_mirror:
+            {
+                coord = (coord < 0) ? (size - 1) - (uint)fabs(coord) % size : (uint)fabs(coord) % size;
+                break;
+            }
+        }
+        return coord;
+    }
+
+    float4_t sample(uintptr_t texture, const sampler_desc_t& sampler, const uint2_t& c_s, const uint2_t& tex_size, format_t format)
+    {
+        const uint32_t format_size = format_size_bytes(format);
+        const uint32_t row_pitch = tex_size[0] * format_size;
+        
+        uint x = filter_texel_coord(c_s[0], tex_size[0], sampler.address_u);
+        uint y = filter_texel_coord(c_s[1], tex_size[1], sampler.address_v);
+
+        return texel_to_color(texel(texture, uint2_t(x, y), format_size, row_pitch), format);
+    }
+
 protected:
     void set_varying_info(uint32_t in_stride_bytes, uint32_t in_pos_offset_bytes)
     {
@@ -112,7 +146,7 @@ protected:
         this->in_pos_offset_bytes = in_pos_offset_bytes;
     }
 
-    //
+    // Simple texel fetch.
     float4_t textureFetch(uintptr_t texture, const float2_t& tex_coord)
     {
         float4_t texel_color = float4_t();
@@ -128,6 +162,7 @@ protected:
         return texel_color;
     }
 
+    // Sample a texture with a sampler.
     float4_t texture2d(uintptr_t texture, const sampler_desc_t& sampler, const float2_t& tex_coord)
     {
         float4_t texel_color = float4_t();
@@ -135,8 +170,6 @@ protected:
         {
             resource_desc_t* desc = (resource_desc_t*)(texture - sizeof(resource_desc_t));
             const float2_t tex_size = float2_t(desc->width, desc->height);
-            const uint32_t format_size = format_size_bytes(desc->format);
-            const uint32_t row_pitch = tex_size[0] * format_size;
             float2_t denorm = denorm_coordinate(tex_coord, tex_size);
 
             switch (sampler.filter)
@@ -144,12 +177,12 @@ protected:
                 case sampler_filter_linear:
                 {
                     float2_t half_pixel = float2_t(0.5f, 0.5f);
-                    float2_t v_cell = floor(denorm);
-                    float2_t offset = denorm - v_cell;
-                    float4_t c_tl = texel_to_color(texel(texture, uint2_t(v_cell) + uint2_t(0, 0), format_size, row_pitch), desc->format);
-                    float4_t c_tr = texel_to_color(texel(texture, uint2_t(v_cell) + uint2_t(1, 0), format_size, row_pitch), desc->format);
-                    float4_t c_bl = texel_to_color(texel(texture, uint2_t(v_cell) + uint2_t(0, 1), format_size, row_pitch), desc->format);
-                    float4_t c_br = texel_to_color(texel(texture, uint2_t(v_cell) + uint2_t(1, 1), format_size, row_pitch), desc->format);
+                    float2_t v_cell = floor(denorm - half_pixel);
+                    float2_t offset = denorm - half_pixel - v_cell;
+                    float4_t c_tl = sample(texture, sampler, uint2_t(v_cell) + uint2_t(0, 0), tex_size, desc->format);
+                    float4_t c_tr = sample(texture, sampler, uint2_t(v_cell) + uint2_t(1, 0), tex_size, desc->format);
+                    float4_t c_bl = sample(texture, sampler, uint2_t(v_cell) + uint2_t(0, 1), tex_size, desc->format);
+                    float4_t c_br = sample(texture, sampler, uint2_t(v_cell) + uint2_t(1, 1), tex_size, desc->format);
             
                     float4_t c_tx = c_tr * offset[0] + c_tl * (1 - offset[0]);
                     float4_t c_bx = c_br * offset[0] + c_bl * (1 - offset[0]);
@@ -159,7 +192,7 @@ protected:
                 case sampler_filter_point:
                 default:
                 {
-                    texel_color = textureFetch(texture, tex_coord);
+                    texel_color = sample(texture, sampler, uint2_t(denorm), tex_size, desc->format);
                     break;
                 }
             }

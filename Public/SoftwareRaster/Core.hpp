@@ -1,6 +1,7 @@
 //
 #pragma once
 
+#include "Math.hpp"
 #include <cstdint>
 
 #if defined(_WIN64)
@@ -183,6 +184,7 @@ struct sampler_desc_t
     texture_address_mode_t address_v;
     texture_address_mode_t address_w;
     sampler_filter_t filter;
+    float4_t border_color;
 };
 
 
