@@ -57,10 +57,11 @@ float4_t rasterizer_t::ndc_to_screen(float4_t ndc_coord)
     const float n = m_viewports[0].near;
     // Relies on viewport transformation, in order to project our normalized device coordinates
     // to screen coordinates.
+    // Half pixel offset is used to prevent off by one errors.
     return float4_t
         (
-            (width / 2) * ndc_coord.x + (x + width / 2),
-            (height / 2) * ndc_coord.y + (y + height / 2),
+            (width / 2) * ndc_coord.x + (x + width / 2) - 0.5,
+            (height / 2) * ndc_coord.y + (y + height / 2) - 0.5,
             ((f - n) / 2) * ndc_coord.z + ((f + n) / 2),
             ndc_coord.w
         );

@@ -103,8 +103,8 @@ private:
 
 int main(int c, char* argv[])
 {
-    uint32_t screen_width = 1200;
-    uint32_t screen_height = 800;
+    uint32_t screen_width = 800;
+    uint32_t screen_height = 600;
     swrast::initialize();
     swrast::resource_desc_t resource_desc = { };
     resource_desc.width = (sizeof(float) * 10) * (9 + 36);
