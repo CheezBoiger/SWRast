@@ -103,8 +103,8 @@ private:
 
 int main(int c, char* argv[])
 {
-    uint32_t screen_width = 800;
-    uint32_t screen_height = 600;
+    uint32_t screen_width = 1920;
+    uint32_t screen_height = 1080;
     swrast::initialize();
     swrast::resource_desc_t resource_desc = { };
     resource_desc.width = (sizeof(float) * 10) * (9 + 36);
@@ -267,7 +267,7 @@ int main(int c, char* argv[])
     ps->setup();
     ps->m_texture = tex;
 
-    swrast::float4x4_t rot = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(1, 0, 0), swrast::deg_to_rad(45.f));
+    swrast::float4x4_t rot = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(1, 0, 0), swrast::deg_to_rad(-45.f));
     swrast::float4x4_t rot2 = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(0, 1, 0), swrast::deg_to_rad(45.f));
     swrast::float4x4_t t = swrast::translate<float>(swrast::identity<float>(), swrast::float3_t(0, 0, 5.5));
     swrast::float4x4_t model = rot * rot2 * t;
@@ -301,7 +301,7 @@ int main(int c, char* argv[])
     swrast::bind_index_buffer(ib);
     // Draws the rectangle.
     //swrast::draw_instanced(36, 1, 9, 0);
-    swrast::draw_indexed_instanced(36, 1, 0, 9, 0);
+    swrast::draw_indexed_instanced(36, 1, 0, 3, 0);
     // Rotate the other triangle.
     rot = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(0, 0, 1), swrast::deg_to_rad(45.f));
     t = swrast::translate<float>(swrast::identity<float>(), swrast::float3_t(0, 0.2, 4.0));
