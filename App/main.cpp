@@ -1,7 +1,9 @@
 // Software rasterizer test.
 #include "SoftwareRaster/Context.hpp"
 #define STB_IMAGE_WRITE_IMPLEMENTATION 1
+#define STB_IMAGE_IMPLEMENTATION 1
 #include "stb_image_write.h"
+#include "stb_image.h"
 #include <iostream>
 #include <vector>
 #define WINDING_ORDER_COUNTER_CLOCKWISE 0
@@ -89,9 +91,9 @@ public:
         //swrast::float4_t color = textureFetch(m_texture, varying.texcoord);
         swrast::sampler_desc_t desc;
         desc.filter = swrast::sampler_filter_linear;
-        desc.address_u = swrast::texture_address_mode_mirror;
-        desc.address_v = swrast::texture_address_mode_mirror;
-        varying.texcoord = varying.texcoord * 2.5f;
+        desc.address_u = swrast::texture_address_mode_clamp;
+        desc.address_v = swrast::texture_address_mode_clamp;
+        //varying.texcoord = varying.texcoord * 2.5f;
         swrast::float4_t color = texture2d(m_texture, desc, varying.texcoord);
         return color;
     }
@@ -101,28 +103,39 @@ private:
 
 int main(int c, char* argv[])
 {
+    uint32_t screen_width = 1200;
+    uint32_t screen_height = 800;
     swrast::initialize();
     swrast::resource_desc_t resource_desc = { };
-    resource_desc.width = (sizeof(float) * 10) * 9;
+    resource_desc.width = (sizeof(float) * 10) * (9 + 36);
     resource_desc.height = 1;
     resource_desc.type = swrast::resource_type_buffer;
     resource_desc.mip_count = 1;
     resource_desc.depth_or_array_size = 1;
     swrast::resource_t vb = swrast::allocate_resource(resource_desc);
 
-    resource_desc.width = 1920;
-    resource_desc.height = 1080;
+    resource_desc.width = sizeof(swrast::uint) * 36;
+    swrast::resource_t ib = swrast::allocate_resource(resource_desc);
+
+    resource_desc.width = screen_width;
+    resource_desc.height = screen_height;
     resource_desc.format = swrast::format_r8g8b8a8_unorm;
     swrast::resource_t rt = swrast::allocate_resource(resource_desc);
    
     resource_desc.format = swrast::format_r32_float;
     swrast::resource_t ds = swrast::allocate_resource(resource_desc);
 
+    int width;
+    int height;
+    int n;
+    void* data = stbi_load("example.png", &width, &height, &n, 4);
+
     resource_desc.format = swrast::format_r8g8b8a8_unorm;
-    resource_desc.width = 128;
-    resource_desc.height = 128;
+    resource_desc.width = width;
+    resource_desc.height = height;
     swrast::resource_t tex = swrast::allocate_resource(resource_desc);
 
+#if 0
     for (uint32_t y = 0; y < 128; ++y)
     {
         for (uint32_t x = 0; x < 128; ++x)
@@ -132,6 +145,18 @@ int main(int c, char* argv[])
             *address = ((c) | (c << 8) | (c << 16) | (255 << 24));
         }
     }
+#else
+    for (uint32_t y = 0; y < height; ++y)
+    {
+        for (uint32_t x = 0; x < width; ++x)
+        {
+            uint32_t c = *(uint32_t*)(((uintptr_t)data) + x * 4 + (width * 4 * y));
+            uint32_t* address = (uint32_t*)(tex + x * 4 + (width * 4 * y));
+            *address = c;
+        }
+    }
+#endif
+    stbi_image_free(data);
 
     //swrast::shader_t vs = swrast::create_shader(swrast::shader_type_vertex, nullptr, 0);
     //swrast::shader_t ps = swrast::create_shader(swrast::shader_type_pixel, nullptr, 0);
@@ -165,16 +190,75 @@ int main(int c, char* argv[])
                 -0.5f,  0.5f, 0.f,       0, 1, 0, 1,        1, 1,
                  0.0f, -0.5f, 0.f,       1, 0, 0, 1,        0, 0.5,
 
-                 0.5f,  0.5f, 0.f,       1, 0, 0, 1,        0, 1,
-                 -0.5f, 0.5f, 0.f,       0, 0, 1, 1,        0, 0,
-                -0.5f,  -0.5f, 0.f,      0, 1, 0, 1,        1, 0,
+                 0.5f,  0.5f, 0.f,       1, 0, 0, 1,        1, 1,
+                 -0.5f, 0.5f, 0.f,       0, 0, 1, 1,        0, 1,
+                -0.5f,  -0.5f, 0.f,      0, 1, 0, 1,        0, 0,
 
-                 0.5f,  -0.5f, 0.f,      0, 0, 1, 1,        0, 0,
-                 0.5f,   0.5f, 0.f,      1, 0, 0, 1,        1, 0,
-                -0.5f,  -0.5f, 0.f,      0, 1, 0, 1,        0, 1,
+                 0.5f,  -0.5f, 0.f,      0, 0, 1, 1,        1, 0,
+                 0.5f,   0.5f, 0.f,      1, 0, 0, 1,        1, 1,
+                -0.5f,  -0.5f, 0.f,      0, 1, 0, 1,        0, 0,
+
+                 // front                                                                 
+                -1.0f, -1.0f, 1.0f,      0, 1, 1, 1,        0, 0,
+                 1.0f, -1.0f, 1.0f,      0, 1, 1, 1,        1, 0,
+                 1.0f,  1.0f, 1.0f,      0, 1, 1, 1,        1, 1,
+                 1.0f,  1.0f, 1.0f,      0, 1, 1, 1,        1, 1,
+                -1.0f,  1.0f, 1.0f,      0, 1, 1, 1,        0, 1,
+                -1.0f, -1.0f, 1.0f,      0, 1, 1, 1,        0, 0,
+                // Back                                         
+                -1.0f, -1.0f, -1.0f,     1, 0, 1, 1,        0, 0,
+                -1.0f,  1.0f, -1.0f,     1, 0, 1, 1,        1, 0,
+                 1.0f,  1.0f, -1.0f,     1, 0, 1, 1,        1, 1,
+                 1.0f,  1.0f, -1.0f,     1, 0, 1, 1,        1, 1,
+                 1.0f, -1.0f, -1.0f,     1, 0, 1, 1,        0, 1,
+                -1.0f, -1.0f, -1.0f,     1, 0, 1, 1,        0, 0,
+                  // up                                         
+                 1.0f,  1.0f,  1.0f,     1, 1, 0, 1,        0, 0,
+                 1.0f,  1.0f, -1.0f,     1, 1, 0, 1,        1, 0,
+                -1.0f,  1.0f, -1.0f,     1, 1, 0, 1,        1, 1,
+                -1.0f,  1.0f, -1.0f,     1, 1, 0, 1,        1, 1,
+                -1.0f,  1.0f,  1.0f,     1, 1, 0, 1,        0, 1,
+                 1.0f,  1.0f,  1.0f,     1, 1, 0, 1,        0, 0,
+                // Down                                         
+                 1.0f, -1.0f,  1.0f,     1, 0, 0, 1,        0, 0,
+                -1.0f, -1.0f,  1.0f,     1, 0, 0, 1,        1, 0,
+                -1.0f, -1.0f, -1.0f,     1, 0, 0, 1,        1, 1,
+                -1.0f, -1.0f, -1.0f,     1, 0, 0, 1,        1, 1,
+                 1.0f, -1.0f, -1.0f,     1, 0, 0, 1,        0, 1,
+                 1.0f, -1.0f,  1.0f,     1, 0, 0, 1,        0, 0,
+                // right                                        
+                 1.0f, -1.0f,  1.0f,     0, 1, 0, 1,        0, 0,
+                 1.0f, -1.0f, -1.0f,     0, 1, 0, 1,        1, 0,
+                 1.0f,  1.0f, -1.0f,     0, 1, 0, 1,        1, 1,
+                 1.0f,  1.0f, -1.0f,     0, 1, 0, 1,        1, 1,
+                 1.0f,  1.0f,  1.0f,     0, 1, 0, 1,        0, 1,
+                 1.0f, -1.0f,  1.0f,     0, 1, 0, 1,        0, 0,
+                // Left                                         
+                -1.0f, -1.0f,  1.0f,     0, 0, 1, 1,        0, 0,
+                -1.0f,  1.0f,  1.0f,     0, 0, 1, 1,        1, 0,
+                -1.0f,  1.0f, -1.0f,     0, 0, 1, 1,        1, 1,
+                -1.0f,  1.0f, -1.0f,     0, 0, 1, 1,        1, 1,
+                -1.0f, -1.0f, -1.0f,     0, 0, 1, 1,        0, 1,
+                -1.0f, -1.0f,  1.0f,     0, 0, 1, 1,        0, 0,
 #endif
             };
-       memcpy((void*)vb, triangle.data(), (sizeof(float) * 10) * 9);
+        std::vector<swrast::uint> indices = 
+        {
+            0, 1, 2,
+            3, 4, 5,
+            6, 7, 8,
+            9, 10, 11,
+            12, 13, 14,
+            15, 16, 17,
+            18, 19, 20,
+            21, 22, 23,
+            24, 25, 26,
+            27, 28, 29,
+            30, 31, 32,
+            33, 34, 35 
+        };
+       memcpy((void*)vb, triangle.data(), (sizeof(float) * 10) * (9 + 36));
+       memcpy((void*)ib, indices.data(), sizeof(swrast::uint) * 36);
     }
 
     simple_vertex_t* vs = new simple_vertex_t();
@@ -183,15 +267,16 @@ int main(int c, char* argv[])
     ps->setup();
     ps->m_texture = tex;
 
-    swrast::float4x4_t rot = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(1, 0, 0), swrast::deg_to_rad(90.f));
-    swrast::float4x4_t t = swrast::translate<float>(swrast::identity<float>(), swrast::float3_t(0, 0.25, 1.5));
-    swrast::float4x4_t model = rot * t;
-    vs->mvp =  model * swrast::perspective_lh_aspect(swrast::deg_to_rad(45.0f), 1920.f/1080.f, 0.001f, 1000.0f);
+    swrast::float4x4_t rot = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(1, 0, 0), swrast::deg_to_rad(45.f));
+    swrast::float4x4_t rot2 = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(0, 1, 0), swrast::deg_to_rad(45.f));
+    swrast::float4x4_t t = swrast::translate<float>(swrast::identity<float>(), swrast::float3_t(0, 0, 5.5));
+    swrast::float4x4_t model = rot * rot2 * t;
+    vs->mvp =  model * swrast::perspective_lh_aspect(swrast::deg_to_rad(45.0f), (float)screen_width/(float)screen_height, 0.001f, 1000.0f);
 
     swrast::viewport_t viewport = { };
     viewport.x = viewport.y = 0;
-    viewport.width = 1920;
-    viewport.height = 1080;
+    viewport.width = screen_width;
+    viewport.height = screen_height;
     viewport.near = 0.0000f;
     viewport.far = 1.0f;
     swrast::bind_render_targets(1, &rt, ds);
@@ -203,9 +288,9 @@ int main(int c, char* argv[])
     clear_rect.height = viewport.height;
     swrast::clear_render_target(0, clear_rect, rgba);
     swrast::clear_depth_stencil(0.f, clear_rect);
-    swrast::set_front_face(swrast::front_face_clockwise);
+    swrast::set_front_face(swrast::front_face_counter_clockwise);
     swrast::set_depth_compare(swrast::compare_op_greater);
-    swrast::set_cull_mode(swrast::cull_mode_none);
+    swrast::set_cull_mode(swrast::cull_mode_front);
     swrast::set_input_layout(layout);
     swrast::set_viewports(1, &viewport);
     swrast::bind_vertex_shader(vs);
@@ -213,13 +298,16 @@ int main(int c, char* argv[])
     swrast::enable_depth(true);
     swrast::enable_depth_write(true);
     swrast::bind_vertex_buffers(1, &vb);
+    swrast::bind_index_buffer(ib);
     // Draws the rectangle.
-    swrast::draw_instanced(6, 1, 3, 0);
+    //swrast::draw_instanced(36, 1, 9, 0);
+    swrast::draw_indexed_instanced(36, 1, 0, 9, 0);
     // Rotate the other triangle.
     rot = swrast::rotate<float>(swrast::identity<float>(), swrast::float3_t(0, 0, 1), swrast::deg_to_rad(45.f));
-    t = swrast::translate<float>(swrast::identity<float>(), swrast::float3_t(0, 0.2, 1.5));
+    t = swrast::translate<float>(swrast::identity<float>(), swrast::float3_t(0, 0.2, 4.0));
     swrast::float4x4_t s = swrast::scale(swrast::identity<float>(), swrast::float3_t(0.5, 0.5, 0.5));
-    vs->mvp = s * rot * t * swrast::perspective_lh_aspect(swrast::deg_to_rad(45.0f), 1920.f/1080.f, 0.001f, 1000.0f);
+    vs->mvp = s * rot * t * swrast::perspective_lh_aspect(swrast::deg_to_rad(45.0f), (float)screen_width/(float)screen_height, 0.001f, 1000.0f);
+    swrast::set_cull_mode(swrast::cull_mode_back);
     swrast::draw_instanced(3, 1, 0, 0);
 
     int err = stbi_write_png("img.png", viewport.width, viewport.height, 4, (void*)rt, viewport.width * 4);

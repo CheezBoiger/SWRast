@@ -27,6 +27,7 @@ SW_EXPORT_DLL error_t       bind_vertex_buffers(uint32_t num_vbs, resource_t* vb
 SW_EXPORT_DLL error_t       bind_index_buffer(resource_t ib);
 
 SW_EXPORT_DLL error_t       draw_instanced(uint32_t num_vertices, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
+SW_EXPORT_DLL error_t       draw_indexed_instanced(uint32_t num_indices, uint32_t num_instances, uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance);
 
 SW_EXPORT_DLL shader_t      create_shader(shader_type_t type, void* src_code, uint32_t size_bytes);
 SW_EXPORT_DLL error_t       destroy_shader(shader_t shader);

@@ -85,12 +85,14 @@ public:
 
     // Bind our vertex buffers. Must be in object space.
     error_t bind_vertex_buffers(uint32_t num_vbs, resource_t* resource);
+    error_t bind_index_buffer(resource_t resource) { index_buffer = resource; return result_ok; }
     error_t bind_input_layout(input_layout* layout) { input_layout = layout; return result_ok; }
 
     // Calls to generate and transform our object space vertices into clip space.
     // The input vertex buffers must be in object space, and the output transformation
     // must be in clip space.
     error_t transform(vertices_t* in_vertices, uint32_t first_vertex, uint32_t num_vertices);
+    error_t transform_indexed(vertices_t* in_vertices, uint32_t first_index, uint32_t first_vertex, uint32_t num_indices);
 
     // Bind the vertex shader to be used for transformation.
     error_t bind_vertex_shader(vertex_shader_t* shader) { vertex_shader = shader; return result_ok; }
@@ -100,6 +102,7 @@ public:
 private:
     input_layout* input_layout;
     resource_t vertex_buffers[16];
+    resource_t index_buffer;
     uint32_t num_vertex_buffers;
     vertex_shader_t* vertex_shader;
 };

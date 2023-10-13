@@ -90,6 +90,33 @@ error_t draw_instanced(uint32_t num_vertices, uint32_t instance_count, uint32_t 
 }
 
 
+error_t draw_indexed_instanced(uint32_t num_indices, uint32_t num_instances, uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance)
+{
+    vertices_t vertex_pool = assembler.get_available_vertex_pool(UINT16_MAX * num_instances, 
+        vertex_transformation.get_vertex_shader()->get_out_vertex_stride());
+    // We probably won't use all vertices since we are relying on vertex indices.
+    // But theoretically we will have enough just in case.
+    vertex_pool.num_vertices = num_indices;
+
+    // transform our vertices with the provided vertex shader.
+    vertex_transformation.transform_indexed(&vertex_pool, first_index, vertex_offset, num_indices);
+
+    // The clipper clips any vertices that won't be in the clip/view volume.
+    // If all vertices of the triangle are clipped, then that triangle is considered culled.
+    clipper.clip_cull(&vertex_pool);
+    
+    // Primitive generator creates our triangles.
+    // In this case, we can just reinterpret our vertices as triangles.
+    uint32_t num_triangles = vertex_pool.num_vertices / 3;
+
+    // finally rasterize onto framebuffer. Triangles are left in clip space,
+    // so the rasterizer will convert them into ndc, for which they will then 
+    // be projected into screen space.
+    rasterizer.raster(num_triangles, vertex_pool, winding_order);
+    return result_ok;
+}
+
+
 error_t bind_vertex_shader(vertex_shader_t* shader)
 {
     // Find the vertex shader, and bind it to vertex transformer.
@@ -228,5 +255,11 @@ error_t set_cull_mode(cull_mode_t cull_mode)
 {
     rasterizer.set_cull_mode(cull_mode);
     return result_ok;
+}
+
+
+error_t bind_index_buffer(resource_t ib)
+{
+    return vertex_transformation.bind_index_buffer(ib);
 }
 } // 

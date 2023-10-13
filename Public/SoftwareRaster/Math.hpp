@@ -42,6 +42,10 @@ struct vec2_t
     vec2_t operator-(type scalar) const { return vec2_t(x - scalar, y - scalar); }
     vec2_t operator*(type scalar) const { return vec2_t(x * scalar, y * scalar); }
     vec2_t operator/(type scalar) const { return vec2_t(x / scalar, y / scalar); }
+
+    void operator*=(const vec2_t& rh) const { x *= rh.x; y *= rh.y; }
+    void operator+=(const vec2_t& rh) const { x += rh.x; y += rh.y; }
+    void operator-=(const vec2_t& rh) const { x -= rh.x; y -= rh.y; }
 };
 
 
@@ -294,7 +298,19 @@ template<typename type>
 vec2_t<type> clamp(const vec2_t<type>& v, const vec2_t<type>& mmin, const vec2_t<type>& mmax); 
 
 template<typename type>
+vec3_t<type> clamp(const vec3_t<type>& v, const vec3_t<type>& mmin, const vec3_t<type>& mmax);
+
+template<typename type>
+vec4_t<type> clamp(const vec4_t<type>& v, const vec4_t<type>& mmin, const vec4_t<type>& mmax);
+
+template<typename type>
 vec2_t<type> floor(const vec2_t<type>& v);
+
+template<typename type>
+vec3_t<type> floor(const vec3_t<type>& v);
+
+template<typename type>
+vec4_t<type> floor(const vec4_t<type>& v);
 
 typedef axis_aligned_bounds2d_t<float>      fbounds2d_t;
 typedef axis_aligned_bounds2d_t<uint32_t>   ubounds2d_t;
