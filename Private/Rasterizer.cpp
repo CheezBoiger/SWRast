@@ -42,26 +42,26 @@ bool is_pass_depth_test(compare_op_t op, float dest_depth, float source_depth)
 float4_t rasterizer_t::clip_to_ndc(float4_t clip)
 {    
     // Perspective division is done in order to project to ndc space.
-    float3_t ndc = float3_t(clip) / clip.w;
-    return float4_t(ndc.x, ndc.y, ndc.z, 1.0f / clip.w);
+    float w_inv = 1.f / clip.w;
+    float3_t ndc = float3_t(clip) * w_inv;
+    return float4_t(ndc.x, ndc.y, ndc.z, w_inv);
 }
 
 
 float4_t rasterizer_t::ndc_to_screen(float4_t ndc_coord)
 {
-    const float width = m_viewports[0].width;
-    const float height = m_viewports[0].height;
-    const float x = m_viewports[0].x;
-    const float y = m_viewports[0].y;
-    const float f = m_viewports[0].far;
-    const float n = m_viewports[0].near;
+    const float width   = (float)m_viewports[0].width;
+    const float height  = (float)m_viewports[0].height;
+    const float x       = (float)m_viewports[0].x;
+    const float y       = (float)m_viewports[0].y;
+    const float f       = m_viewports[0].far;
+    const float n       = m_viewports[0].near;
     // Relies on viewport transformation, in order to project our normalized device coordinates
     // to screen coordinates.
-    // Half pixel offset is used to prevent off by one errors.
     return float4_t
         (
-            (width / 2) * ndc_coord.x + (x + width / 2) - 0.5,
-            (height / 2) * ndc_coord.y + (y + height / 2) - 0.5,
+            floorf((width / 2) * ndc_coord.x + (x + width / 2)) + 0.5,
+            floorf((height / 2) * ndc_coord.y + (y + height / 2)) + 0.5,
             ((f - n) / 2) * ndc_coord.z + ((f + n) / 2),
             ndc_coord.w
         );
