@@ -1,5 +1,6 @@
 //
 #include "HardwareShader.hpp"
+#include "Shader.hpp"
 #include <cstdlib>
 
 namespace swrast {
@@ -56,5 +57,171 @@ error_t hardware_shader_cache_t::destroy_shader(shader_t shader_id)
         shader_cache.erase(iter);
     }
     return result_ok;
+}
+
+
+static
+float4_t rgba8_to_norm(uint32_t color)
+{
+    float4_t result;
+    float inv = 1.f / 255.f;
+    result.r = (float)((color & 0x000000ff)) * inv;
+    result.g = (float)((color & 0x0000ff00) >> 8) * inv;
+    result.b = (float)((color & 0x00ff0000) >> 16) * inv;
+    result.a = (float)((color & 0xff000000) >> 24) * inv;
+    return result;
+}
+    
+static
+float4_t texel_to_color(uintptr_t texel, format_t format)
+{
+    float4_t result;
+    switch (format)
+    {
+        case format_r8g8b8a8_unorm:
+        {
+            uint32_t color = *(uint32_t*)texel;
+            result = rgba8_to_norm(color);
+            break;
+        }
+        case format_r32_float:
+        {
+            float color = *(float*)texel;
+            result[0] = color;
+            result[1] = result[0];
+            result[2] = result[0];
+            result[3] = result[0];
+            break;
+        }
+        default:
+            break;
+    }
+    return result;
+}
+
+
+static
+float3_t denorm_coordinate(const float3_t& uvw, const float3_t& tex_size)
+{
+    float x = uvw[0] * tex_size[0];
+    float y = uvw[1] * tex_size[1];
+    float z = uvw[2] * tex_size[2];
+    return float3_t(x, y, z);
+}
+
+
+static
+uintptr_t texel(uintptr_t texture, const uint3_t& c_s, uint32_t format_size, uint32_t row_pitch, uint32_t depth)
+{
+    // 3d texel coordinate calculated as:
+    // 3d[x, y, z] = 1d[ x + (y * width) + (z * width * height) ]
+    // Should work with 1d and 2d coordinates, as long as y and/or z are 0.
+    return texture + (c_s[0] * format_size) + (row_pitch * c_s[1]) + (c_s[2] * depth);
+}
+
+
+static
+uint filter_texel_coord(uint coord, uint size, texture_address_mode_t address_mode)
+{
+    switch (address_mode)
+    {
+        case texture_address_mode_clamp:
+        {
+            coord = clamp(coord, (uint)0, size - 1);
+            break;
+        }
+        case texture_address_mode_wrap:
+        {
+            coord = (uint)fabs((float)(coord % size));
+            break;
+        }
+        case texture_address_mode_mirror:
+        {
+            coord = (coord < 0) ? (size - 1) - (uint)fabs(coord) % size : (uint)fabs(coord) % size;
+            break;
+        }
+    }
+    return coord;
+}
+
+
+static
+float4_t sample(uintptr_t texture, const sampler_desc_t& sampler, const uint3_t& c_s, const uint3_t& tex_size, format_t format)
+{
+    const uint32_t format_size = format_size_bytes(format);
+    const uint32_t row_pitch = tex_size[0] * format_size;
+    const uint32_t depth = tex_size[1] * row_pitch;
+        
+    const uint x = filter_texel_coord(c_s[0], tex_size[0], sampler.address_u);
+    const uint y = filter_texel_coord(c_s[1], tex_size[1], sampler.address_v);
+    const uint z = filter_texel_coord(c_s[2], tex_size[2], sampler.address_w);
+
+    return texel_to_color(texel(texture, uint3_t(x, y, z), format_size, row_pitch, depth), format);
+}
+
+
+float4_t pixel_shader_t::texture(uintptr_t texture_handle, const sampler_desc_t& sampler, const float3_t& tex_coord)
+{
+    float4_t texel_color = float4_t();
+    if (texture_handle != 0)
+    {
+        resource_desc_t* desc = (resource_desc_t*)(texture_handle - sizeof(resource_desc_t));
+        const float3_t tex_size = float3_t(desc->width, desc->height, desc->depth_or_array_size);
+        float2_t denorm = denorm_coordinate(tex_coord, tex_size);
+
+        switch (sampler.filter)
+        {
+            case sampler_filter_linear:
+            {
+                float2_t half_pixel = float2_t(0.5f, 0.5f);
+                float2_t v_cell = floor(denorm - half_pixel);
+                float2_t offset = denorm - half_pixel - v_cell;
+                float4_t c_tl = sample(texture_handle, sampler, uint2_t(v_cell) + uint2_t(0, 0), tex_size, desc->format);
+                float4_t c_tr = sample(texture_handle, sampler, uint2_t(v_cell) + uint2_t(1, 0), tex_size, desc->format);
+                float4_t c_bl = sample(texture_handle, sampler, uint2_t(v_cell) + uint2_t(0, 1), tex_size, desc->format);
+                float4_t c_br = sample(texture_handle, sampler, uint2_t(v_cell) + uint2_t(1, 1), tex_size, desc->format);
+            
+                float4_t c_tx = c_tr * offset[0] + c_tl * (1 - offset[0]);
+                float4_t c_bx = c_br * offset[0] + c_bl * (1 - offset[0]);
+                texel_color = c_bx * offset[1] + c_tx * (1 - offset[1]);
+                break;
+            }
+            case sampler_filter_point:
+            default:
+            {
+                texel_color = sample(texture_handle, sampler, uint2_t(denorm), tex_size, desc->format);
+                break;
+            }
+        }
+    }
+    return texel_color;
+}
+
+
+float4_t pixel_shader_t::textureFetch(uintptr_t texture_handle, const uint3_t& coord)
+{
+    float4_t texel_color = float4_t();
+    if (texture_handle != 0)
+    {
+        resource_desc_t* desc = (resource_desc_t*)(texture_handle - sizeof(resource_desc_t));
+        const uint3_t tex_size = uint3_t(desc->width, desc->height, desc->depth_or_array_size);
+        const uint32_t format_size = format_size_bytes(desc->format);
+        const uint32_t row_pitch = tex_size[0] * format_size;
+        const uint32_t depth = tex_size[1] * row_pitch;
+        texel_color = texel_to_color(texel(texture_handle, coord, format_size, row_pitch, depth), desc->format);
+    }
+    return texel_color;
+}
+
+
+uint3_t pixel_shader_t::texture_size(uintptr_t texture_handle)
+{
+    if (texture_handle != 0)
+    {
+        resource_desc_t* desc = (resource_desc_t*)(texture_handle - sizeof(resource_desc_t));
+        const uint3_t tex_size = uint3_t(desc->width, desc->height, desc->depth_or_array_size);
+        return tex_size;
+    }
+    return uint3_t(0, 0, 0);
 }
 } // swrast

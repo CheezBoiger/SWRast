@@ -208,8 +208,22 @@ vec2_t<type> clamp(const vec2_t<type>& v, const vec2_t<type>& mmin, const vec2_t
 
 
 template<typename type>
+vec3_t<type> clamp(const vec3_t<type>& v, const vec3_t<type>& mmin, const vec3_t<type>& mmax)
+{
+    return vec3_t<type>(clamp(v[0], mmin[0], mmax[0]), clamp(v[1], mmin[1], mmax[1]), clamp(v[2], mmin[2], mmax[2]));
+}
+
+
+template<typename type>
 vec2_t<type> floor(const vec2_t<type>& o)
 {
     return vec2_t<type>(floorf(o[0]), floorf(o[1]));
+}
+
+
+template<typename type>
+vec3_t<type> floor(const vec3_t<type>& o)
+{
+    return vec3_t<type>(floorf(o[0]), floorf(o[1]), floorf(o[2]));
 }
 } // swrast

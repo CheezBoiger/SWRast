@@ -8,6 +8,8 @@
 #include <vector>
 #define WINDING_ORDER_COUNTER_CLOCKWISE 0
 
+#define CHECKERBOARD_TEXTURE 1
+#define USE_TEXTURE_FETCH 0
 
 // Vertex shader implementation.
 class simple_vertex_t : public swrast::vertex_shader_t
@@ -94,7 +96,15 @@ public:
         desc.address_u = swrast::texture_address_mode_clamp;
         desc.address_v = swrast::texture_address_mode_clamp;
         //varying.texcoord = varying.texcoord * 2.5f;
-        swrast::float4_t color = texture2d(m_texture, desc, varying.texcoord);
+        swrast::float4_t color;
+#if USE_TEXTURE_FETCH
+        swrast::float3_t tex_size = texture_size(m_texture);
+        swrast::uint x = swrast::clamp(varying.texcoord.x * tex_size.x, 0.f, tex_size.x - 1);
+        swrast::uint y = swrast::clamp(varying.texcoord.y * tex_size.y, 0.f, tex_size.y - 1);
+        color = textureFetch(m_texture, swrast::uint2_t(x, y));
+#else
+        color = texture(m_texture, desc, varying.texcoord);
+#endif
         return color;
     }
 private:
@@ -125,20 +135,21 @@ int main(int c, char* argv[])
     resource_desc.format = swrast::format_r32_float;
     swrast::resource_t ds = swrast::allocate_resource(resource_desc);
 
-    int width;
-    int height;
+    int width = 128;
+    int height = 128;
+#if !CHECKERBOARD_TEXTURE
     int n;
     void* data = stbi_load("example.png", &width, &height, &n, 4);
-
+#endif
     resource_desc.format = swrast::format_r8g8b8a8_unorm;
     resource_desc.width = width;
     resource_desc.height = height;
     swrast::resource_t tex = swrast::allocate_resource(resource_desc);
 
-#if 0
-    for (uint32_t y = 0; y < 128; ++y)
+#if CHECKERBOARD_TEXTURE
+    for (uint32_t y = 0; y < width; ++y)
     {
-        for (uint32_t x = 0; x < 128; ++x)
+        for (uint32_t x = 0; x < height; ++x)
         {
             uint32_t c = (((y & 0x8) == 0) ^ ((x & 0x8)  == 0)) * 255;
             uint32_t* address = (uint32_t*)(tex + x * 4 + (128 * 4 * y));
@@ -155,8 +166,8 @@ int main(int c, char* argv[])
             *address = c;
         }
     }
-#endif
     stbi_image_free(data);
+#endif
 
     //swrast::shader_t vs = swrast::create_shader(swrast::shader_type_vertex, nullptr, 0);
     //swrast::shader_t ps = swrast::create_shader(swrast::shader_type_pixel, nullptr, 0);

@@ -58,6 +58,7 @@ struct vec3_t
         struct { type r, g, b; };
         struct { type s, t, r; };
     };
+
     vec3_t(type x = static_cast<type>(0), type y = static_cast<type>(0), type z = static_cast<type>(0))
         : x(x), y(y), z(z)
     { }
@@ -67,6 +68,13 @@ struct vec3_t
         : x(static_cast<type>(other[0]))
         , y(static_cast<type>(other[1]))
         , z(static_cast<type>(other[2]))
+    { }
+
+    template<typename o>
+    vec3_t(const vec2_t<o>& other, type z = static_cast<type>(0))
+        : x(static_cast<type>(other[0]))
+        , y(static_cast<type>(other[1]))
+        , z(static_cast<type>(z))
     { }
 
     type& operator[](size_t i) { return (&x)[i]; }
@@ -100,8 +108,29 @@ struct vec4_t
     vec4_t(type x = static_cast<type>(0), type y = static_cast<type>(0), type z = static_cast<type>(0), type w = static_cast<type>(0))
         : x(x), y(y), z(z), w(w)
     { }
-    vec4_t(const vec3_t<type>& comp3, type w = static_cast<type>(0))
-        : x(comp3[0]), y(comp3[1]), z(comp3[2]), w(w) 
+
+    template<typename o>
+    vec4_t(const vec2_t<o>& c0, const vec2_t<o>& c1)
+        : x(static_cast<type>(c0[0]))
+        , y(static_cast<type>(c0[1]))
+        , z(static_cast<type>(c1[0]))
+        , w(static_cast<type>(c1[1]))
+    { }
+
+    template<typename tt>
+    vec4_t(const vec2_t<tt>& c0, tt z = static_cast<tt>(0), tt w = static_cast<tt>(0))
+        : x(static_cast<type>(c0[0]))
+        , y(static_cast<type>(c0[1]))
+        , z(static_cast<type>(z))
+        , w(static_cast<type>(w))
+    { }
+
+    template<typename o>
+    vec4_t(const vec3_t<o>& comp3, type w = static_cast<o>(0))
+        : x(static_cast<type>(comp3[0]))
+        , y(static_cast<type>(comp3[1]))
+        , z(static_cast<type>(comp3[2]))
+        , w(static_cast<type>(w)) 
     { }
 
     template<typename o>
