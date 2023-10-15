@@ -2,6 +2,7 @@
 #include "Context.hpp"
 #include "Math.hpp"
 #include "InputAssembly.hpp"
+#include "Allocator.hpp"
 #include <cstdint>
 
 namespace swrast {
@@ -133,7 +134,14 @@ public:
 
     void set_depth_compare_op(compare_op_t compare_op) { depth_compare = compare_op; }
     void set_cull_mode(cull_mode_t cull) { cull_mode = cull; }
+
 private:
+
+    // Allocate a varying struct.
+    uintptr_t allocate_varying();
+
+    void allocate_varying_heap(size_t size_bytes);    
+
     // Projects ndc coordinates to screen coordinates.
     float4_t ndc_to_screen(float4_t ndc_coord);
     float4_t clip_to_ndc(float4_t clip);
@@ -145,15 +153,17 @@ private:
     // the area of the triangle.
     float edge_function(const float2_t& a, const float2_t& b, const float2_t& c);
     
-    fbounds3d_t ndc_space;
+    fbounds3d_t     ndc_space;
     render_output_t rop;
-    framebuffer_t m_bound_framebuffer;
+    framebuffer_t   m_bound_framebuffer;
     pixel_shader_t* m_bound_pixel_shader;
-    viewport_t m_viewports[8];
-    compare_op_t depth_compare = compare_op_less;
+    viewport_t      m_viewports[8];
+    compare_op_t    depth_compare = compare_op_less;
     cull_mode_t     cull_mode = cull_mode_none;
-    bool        m_depth_enabled = false;
-    bool        m_depth_write_enabled = false;
+    bool            m_depth_enabled = false;
+    bool            m_depth_write_enabled = false;
+    linear_allocator_t per_pixel_varying_allocator;
+    const uint64_t  varying_max_size_bytes = SWRAST_MAX_VARYING_SIZE_BYTES;
 
     // triangle bin, holds triangles that pertain to this bin.
     struct triangle_bin_t

@@ -14,6 +14,8 @@
 
 namespace swrast {
 
+#define SWRAST_MAX_VARYING_SIZE_BYTES 128
+
 typedef uint32_t error_t;
 typedef uint64_t resource_t;
 typedef uint32_t sampler_t;

@@ -60,7 +60,6 @@ error_t hardware_shader_cache_t::destroy_shader(shader_t shader_id)
 }
 
 
-static
 float4_t rgba8_to_norm(uint32_t color)
 {
     float4_t result;
@@ -72,7 +71,7 @@ float4_t rgba8_to_norm(uint32_t color)
     return result;
 }
     
-static
+
 float4_t texel_to_color(uintptr_t texel, format_t format)
 {
     float4_t result;
@@ -110,7 +109,6 @@ float3_t denorm_coordinate(const float3_t& uvw, const float3_t& tex_size)
 }
 
 
-static
 uintptr_t texel(uintptr_t texture, const uint3_t& c_s, uint32_t format_size, uint32_t row_pitch, uint32_t depth)
 {
     // 3d texel coordinate calculated as:
@@ -223,5 +221,63 @@ uint3_t pixel_shader_t::texture_size(uintptr_t texture_handle)
         return tex_size;
     }
     return uint3_t(0, 0, 0);
+}
+
+
+void store_color(uintptr_t texel, const float4_t& color, format_t format)
+{
+    switch (format)
+    {
+        case format_r8g8b8a8_unorm:
+        {
+            uint32_t r = (uint32_t)(color.r * 255.f);
+            uint32_t g = (uint32_t)(color.g * 255.f);
+            uint32_t b = (uint32_t)(color.b * 255.f);
+            uint32_t a = (uint32_t)(color.a * 255.f);
+            uint32_t rgba = (r) | (g << 8) | (b << 16) | (a << 24);
+            uint32_t* output = (uint32_t*)texel;
+            *output = rgba;
+            break;
+        }
+        case format_r32_float:
+        {
+            float* output = (float*)texel;
+            *output = color.r;
+            break;
+        }
+    }
+}
+
+
+float4_t load_color(uintptr_t texel, format_t format)
+{
+    float4_t color;
+    switch (format)
+    {
+        case format_r32_float:
+        {
+            color[0] = *((float*)texel);
+            color[1] = color[0];
+            color[2] = color[0];
+            color[3] = color[0];
+            break;
+        }
+        case format_r8g8b8a8_unorm:
+        {
+            uint32_t rgba = *((uint32_t*)texel);
+            float c_inv = 1.f / 255.f;
+            color[0] = (float)(rgba &  0x000000ff)          * c_inv;
+            color[1] = (float)((rgba & 0x0000ff00) >> 8)    * c_inv;
+            color[2] = (float)((rgba & 0x00ff0000) >> 16)   * c_inv;
+            color[3] = (float)((rgba & 0xff000000) >> 24)   * c_inv;
+            break;
+        }
+        case format_r32g32b32a32_float:
+        {
+            color = *((float4_t*)texel);
+            break;
+        }
+    }
+    return color;
 }
 } // swrast

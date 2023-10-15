@@ -56,12 +56,15 @@ public:
 
     virtual void setup() = 0;
 
-    virtual void interpolate_varying(uintptr_t v0, uintptr_t v1, uintptr_t v2, const float3_t& barycentrics) = 0;
+    virtual void interpolate_varying(uintptr_t varying, uintptr_t v0, uintptr_t v1, uintptr_t v2, const float3_t& barycentrics) = 0;
     // Should output the color. Ideally we want to pass in the 
     // screen space coordinates, which might be used for other processes.
     // We will also want to pass any vertex attributes that might need to be 
     // used for texturing as well.
-    virtual float4_t execute() = 0;
+    virtual float4_t execute(uintptr_t varying_address) = 0;
+
+    uint32_t get_varying_stride_bytes() const { return in_varying_stride_bytes; }
+    uint32_t get_position_offset_bytes() const { return in_pos_offset_bytes; }
 
 protected:
     void set_varying_info(uint32_t in_stride_bytes, uint32_t in_pos_offset_bytes)

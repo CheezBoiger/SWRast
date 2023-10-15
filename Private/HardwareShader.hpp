@@ -76,6 +76,12 @@ struct hardware_shader_t
 //};
 
 
+extern uintptr_t texel(uintptr_t texture, const uint3_t& c_s, uint32_t format_size, uint32_t row_pitch, uint32_t depth);
+extern float4_t texel_to_color(uintptr_t texel, format_t format);
+extern float4_t rgba8_to_norm(uint32_t color);
+
+extern void store_color(uintptr_t texel, const float4_t& color, format_t format); 
+extern float4_t load_color(uintptr_t texel, format_t format);
 
 class hardware_shader_cache_t
 {

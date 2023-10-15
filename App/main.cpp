@@ -8,7 +8,7 @@
 #include <vector>
 #define WINDING_ORDER_COUNTER_CLOCKWISE 0
 
-#define CHECKERBOARD_TEXTURE 1
+#define CHECKERBOARD_TEXTURE 0
 #define USE_TEXTURE_FETCH 0
 
 // Vertex shader implementation.
@@ -67,25 +67,28 @@ public:
         m_texture = 0;
     }
 
-    virtual void interpolate_varying(uintptr_t v0, uintptr_t v1, uintptr_t v2, const swrast::float3_t& barycentrics) override
+    virtual void interpolate_varying(uintptr_t varying_out_address, uintptr_t v0, uintptr_t v1, uintptr_t v2, const swrast::float3_t& barycentrics) override
     {
         in_varying_t* varying_v0 = (in_varying_t*)v0;
         in_varying_t* varying_v1 = (in_varying_t*)v1;
         in_varying_t* varying_v2 = (in_varying_t*)v2;
-        varying.color.r = varying_v0->color.r * barycentrics[0] + varying_v1->color.r * barycentrics[1] + varying_v2->color.r * barycentrics[2];
-        varying.color.g = varying_v0->color.g * barycentrics[0] + varying_v1->color.g * barycentrics[1] + varying_v2->color.g * barycentrics[2];
-        varying.color.b = varying_v0->color.b * barycentrics[0] + varying_v1->color.b * barycentrics[1] + varying_v2->color.b * barycentrics[2];
-        varying.color.a = 1;
+        in_varying_t* varying_out = (in_varying_t*)varying_out_address;
 
-        varying.texcoord.s = varying_v0->texcoord.s * barycentrics[0] + varying_v1->texcoord.s * barycentrics[1] + varying_v2->texcoord.s * barycentrics[2];
-        varying.texcoord.t = varying_v0->texcoord.t * barycentrics[0] + varying_v1->texcoord.t * barycentrics[1] + varying_v2->texcoord.t * barycentrics[2];
+        varying_out->color.r = varying_v0->color.r * barycentrics[0] + varying_v1->color.r * barycentrics[1] + varying_v2->color.r * barycentrics[2];
+        varying_out->color.g = varying_v0->color.g * barycentrics[0] + varying_v1->color.g * barycentrics[1] + varying_v2->color.g * barycentrics[2];
+        varying_out->color.b = varying_v0->color.b * barycentrics[0] + varying_v1->color.b * barycentrics[1] + varying_v2->color.b * barycentrics[2];
+        varying_out->color.a = 1;
+
+        varying_out->texcoord.s = varying_v0->texcoord.s * barycentrics[0] + varying_v1->texcoord.s * barycentrics[1] + varying_v2->texcoord.s * barycentrics[2];
+        varying_out->texcoord.t = varying_v0->texcoord.t * barycentrics[0] + varying_v1->texcoord.t * barycentrics[1] + varying_v2->texcoord.t * barycentrics[2];
     }
     // Should output the color. Ideally we want to pass in the 
     // screen space coordinates, which might be used for other processes.
     // We will also want to pass any vertex attributes that might need to be 
     // used for texturing as well.
-    swrast::float4_t execute() override 
+    swrast::float4_t execute(uintptr_t varying_address) override 
     {
+        in_varying_t* varying = (in_varying_t*)varying_address;
         // checkerboard pattern
         //const int M = 10;
         //float p = (fmod(varying.texcoord.s * M, 1.0) > 0.5) ^ (fmod(varying.texcoord.t * M, 1.0) < 0.5);
@@ -103,12 +106,10 @@ public:
         swrast::uint y = swrast::clamp(varying.texcoord.y * tex_size.y, 0.f, tex_size.y - 1);
         color = textureFetch(m_texture, swrast::uint2_t(x, y));
 #else
-        color = texture(m_texture, desc, varying.texcoord);
+        color = texture(m_texture, desc, varying->texcoord);
 #endif
         return color;
     }
-private:
-    in_varying_t varying;
 };
 
 int main(int c, char* argv[])

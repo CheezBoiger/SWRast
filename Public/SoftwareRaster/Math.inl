@@ -166,6 +166,13 @@ type dot(const vec3_t<type>& l, const vec3_t<type>& r)
 
 
 template<typename type>
+type dot(const vec4_t<type>& l, const vec4_t<type>& r)
+{
+    return (l[0] * r[0]) + (l[1] * r[1]) + (l[2] * r[2]) + (l[3] * r[3]);
+}
+
+
+template<typename type>
 type length(const vec3_t<type>& o)
 {
     return sqrtf(dot(o, o));
