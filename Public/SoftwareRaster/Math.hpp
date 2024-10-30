@@ -11,6 +11,10 @@
 #define SW_EPSILON                 0.0000001 // 
 #define SW_E                       2.71828182845904523536   // e
 
+#include <cctype>
+#include <immintrin.h>
+#include <xmmintrin.h>
+
 namespace swrast {
 
 template<typename type>
@@ -165,6 +169,37 @@ struct vec4_t
     }
 };
 
+class vec4_simd_t
+{
+public:
+    vec4_simd_t(float x = 0.0f, float y = 0.0f, float z = 0.0f, float w = 0.0f)
+    {   
+        float xxxx[4] { x, y, z, w };
+        _mm_store_ps(xxxx, xyzw);
+    }
+
+    vec4_simd_t(__m128 v)
+        : xyzw(v) { }
+
+    vec4_simd_t operator+(const vec4_simd_t& o) const { return vec4_simd_t(_mm_add_ps(xyzw, o.xyzw)); }
+    vec4_simd_t operator-(const vec4_simd_t& o) const { return vec4_simd_t(_mm_sub_ps(xyzw, o.xyzw)); }
+    vec4_simd_t operator*(const vec4_simd_t& o) const { return vec4_simd_t(_mm_mul_ps(xyzw, o.xyzw)); }
+    vec4_simd_t operator/(const vec4_simd_t& o) const { return vec4_simd_t(_mm_div_ps(xyzw, o.xyzw)); }
+    
+    vec4_simd_t operator/(float scalar) const 
+    { 
+        __m128 inv;
+        {
+            float det = 1.0f / scalar;
+            float inv_xxxx[4] { det, det, det, det};
+            _mm_store_ps(inv_xxxx, inv);
+        }
+        return vec4_simd_t(_mm_mul_ps(xyzw, inv));
+    }
+private:
+    __m128 xyzw;
+};
+
 
 template<typename type>
 vec3_t<type> operator+(type scalar, const vec3_t<type>& rh)
@@ -240,12 +275,13 @@ struct mat4x4_t
     mat4x4_t<type> operator+(const mat4x4_t<type>& rh) const;
     mat4x4_t<type> operator-(const mat4x4_t<type>& rh) const;
     mat4x4_t<type> operator*(const mat4x4_t<type>& rh) const;
+    mat4x4_t<type> operator*(type scalar) const;
     
     // Performs a column major order multiplication.
     vec4_t<type>  operator*(const vec4_t<type>& rh) const;
 
-    type operator[](uint32_t index) const { return m[index]; }
     type& operator[](uint32_t index) { return m[index]; }
+    type operator[](uint32_t index) const { return m[index]; }
 };
 
 template<typename type>
@@ -340,6 +376,13 @@ vec3_t<type> floor(const vec3_t<type>& v);
 
 template<typename type>
 vec4_t<type> floor(const vec4_t<type>& v);
+
+
+template<typename type>
+mat4x4_t<type> transpose(const mat4x4_t<type>& t);
+
+template<typename type>
+mat4x4_t<type> inverse(const mat4x4_t<type>& t);
 
 typedef axis_aligned_bounds2d_t<float>      fbounds2d_t;
 typedef axis_aligned_bounds2d_t<uint32_t>   ubounds2d_t;

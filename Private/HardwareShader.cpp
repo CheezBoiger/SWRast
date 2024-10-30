@@ -64,10 +64,10 @@ float4_t rgba8_to_norm(uint32_t color)
 {
     float4_t result;
     float inv = 1.f / 255.f;
-    result.r = (float)((color & 0x000000ff)) * inv;
-    result.g = (float)((color & 0x0000ff00) >> 8) * inv;
-    result.b = (float)((color & 0x00ff0000) >> 16) * inv;
-    result.a = (float)((color & 0xff000000) >> 24) * inv;
+    result.r = (float)((color & 0x000000ff))        * inv;
+    result.g = (float)((color & 0x0000ff00) >> 8)   * inv;
+    result.b = (float)((color & 0x00ff0000) >> 16)  * inv;
+    result.a = (float)((color & 0xff000000) >> 24)  * inv;
     return result;
 }
     
@@ -118,6 +118,14 @@ uintptr_t texel(uintptr_t texture, const uint3_t& c_s, uint32_t format_size, uin
 }
 
 
+uintptr_t texel_cube(uintptr_t texture, const uint3_t& c_s, uint32_t format_size, uint32_t row_pitch, uint32_t depth)
+{
+    // This function should fetch the texel address for a texture cube.
+    //
+    return 0;
+}
+
+
 static
 uint filter_texel_coord(uint coord, uint size, texture_address_mode_t address_mode)
 {
@@ -144,9 +152,9 @@ uint filter_texel_coord(uint coord, uint size, texture_address_mode_t address_mo
 
 
 static
-float4_t sample(uintptr_t texture, const sampler_desc_t& sampler, const uint3_t& c_s, const uint3_t& tex_size, format_t format)
+float4_t sample(uintptr_t texture, const sampler_desc_t& sampler, const uint3_t& c_s, const uint3_t& tex_size, const resource_desc_t& resource_desc)
 {
-    const uint32_t format_size = format_size_bytes(format);
+    const uint32_t format_size = format_size_bytes(resource_desc.format);
     const uint32_t row_pitch = tex_size[0] * format_size;
     const uint32_t depth = tex_size[1] * row_pitch;
         
@@ -154,7 +162,9 @@ float4_t sample(uintptr_t texture, const sampler_desc_t& sampler, const uint3_t&
     const uint y = filter_texel_coord(c_s[1], tex_size[1], sampler.address_v);
     const uint z = filter_texel_coord(c_s[2], tex_size[2], sampler.address_w);
 
-    return texel_to_color(texel(texture, uint3_t(x, y, z), format_size, row_pitch, depth), format);
+    return (resource_desc.type == resource_type_texturecube)
+        ? texel_to_color(texel_cube(texture, uint3_t(x, y, z), format_size, row_pitch, depth), resource_desc.format)
+        : texel_to_color(texel(texture, uint3_t(x, y, z), format_size, row_pitch, depth), resource_desc.format);
 }
 
 
@@ -174,10 +184,10 @@ float4_t pixel_shader_t::texture(uintptr_t texture_handle, const sampler_desc_t&
                 float2_t half_pixel = float2_t(0.5f, 0.5f);
                 float2_t v_cell = floor(denorm - half_pixel);
                 float2_t offset = denorm - half_pixel - v_cell;
-                float4_t c_tl = sample(texture_handle, sampler, uint2_t(v_cell) + uint2_t(0, 0), tex_size, desc->format);
-                float4_t c_tr = sample(texture_handle, sampler, uint2_t(v_cell) + uint2_t(1, 0), tex_size, desc->format);
-                float4_t c_bl = sample(texture_handle, sampler, uint2_t(v_cell) + uint2_t(0, 1), tex_size, desc->format);
-                float4_t c_br = sample(texture_handle, sampler, uint2_t(v_cell) + uint2_t(1, 1), tex_size, desc->format);
+                float4_t c_tl = sample(texture_handle, sampler, uint2_t(v_cell) + uint2_t(0, 0), tex_size, *desc);
+                float4_t c_tr = sample(texture_handle, sampler, uint2_t(v_cell) + uint2_t(1, 0), tex_size, *desc);
+                float4_t c_bl = sample(texture_handle, sampler, uint2_t(v_cell) + uint2_t(0, 1), tex_size, *desc);
+                float4_t c_br = sample(texture_handle, sampler, uint2_t(v_cell) + uint2_t(1, 1), tex_size, *desc);
             
                 float4_t c_tx = c_tr * offset[0] + c_tl * (1 - offset[0]);
                 float4_t c_bx = c_br * offset[0] + c_bl * (1 - offset[0]);
@@ -187,7 +197,7 @@ float4_t pixel_shader_t::texture(uintptr_t texture_handle, const sampler_desc_t&
             case sampler_filter_point:
             default:
             {
-                texel_color = sample(texture_handle, sampler, uint2_t(denorm), tex_size, desc->format);
+                texel_color = sample(texture_handle, sampler, uint2_t(denorm), tex_size, *desc);
                 break;
             }
         }
@@ -224,16 +234,82 @@ uint3_t pixel_shader_t::texture_size(uintptr_t texture_handle)
 }
 
 
+float3_t pixel_shader_t::reflect(float3_t incidence, float3_t normal)
+{
+    // Reflection taken from GLSL references:
+    // https://docs.gl/sl4/reflect
+    return incidence - 2.0f * dot(normal, incidence) * normal;
+}
+
+
+float3_t pixel_shader_t::refract(float3_t incidence, float3_t normal, float eta)
+{
+    // Refraction algorithm taken from GLSL references:
+    // https://docs.gl/sl4/refract
+    float NoI = dot(normal, incidence);
+    float k = 1.0f - eta * eta * (1.0f - NoI * NoI);
+    return (k < 0.0)
+        ? 0.0f
+        : eta * incidence - (eta * NoI + sqrtf(k)) * normal;
+}
+
+
+void pixel_shader_t::varying_attribute(uintptr_t offset, data_type type, interpolation interp)
+{
+        varying_metadata.push_back({ offset, type, interp });
+}
+
+
+// Interpolate the given data with perspective correction.
+#define INTERPOLATE_PERSP(type, output, v0, v1, v2, barycentrics)  { \
+        type* out = (type*)output; \
+        type* d0 = (type*)v0; \
+        type* d1 = (type*)v1; \
+        type* d2 = (type*)v2; \
+        *out = *d0 * barycentrics[0] + *d1 * barycentrics[1] + *d2 * barycentrics[2]; \
+    }
+
+
+void pixel_shader_t::interpolate_varying(uintptr_t varying, uintptr_t v0, uintptr_t v1, uintptr_t v2, const float3_t& barycentrics)
+{
+
+    for (uint it = 0; it < varying_metadata.size(); ++it)
+    {
+        varying_info& info = varying_metadata[it];
+        uintptr_t varying_data = varying + info.offset;
+        uintptr_t v0_d = v0 + info.offset;
+        uintptr_t v1_d = v1 + info.offset;
+        uintptr_t v2_d = v2 + info.offset;
+        switch (info.type)
+        {
+            case data_type_float:
+                INTERPOLATE_PERSP(float, varying_data, v0_d, v1_d, v2_d, barycentrics);
+                break;
+            case data_type_float2:
+                INTERPOLATE_PERSP(float2_t, varying_data, v0_d, v1_d, v2_d, barycentrics);
+                break;
+            case data_type_float3:
+                INTERPOLATE_PERSP(float3_t, varying_data, v0_d, v1_d, v2_d, barycentrics);
+                break;
+            case data_type_float4:
+            default:
+                INTERPOLATE_PERSP(float4_t, varying_data, v0_d, v1_d, v2_d, barycentrics);
+                break;
+        }
+    }
+}
+
+
 void store_color(uintptr_t texel, const float4_t& color, format_t format)
 {
     switch (format)
     {
         case format_r8g8b8a8_unorm:
         {
-            uint32_t r = (uint32_t)(color.r * 255.f);
-            uint32_t g = (uint32_t)(color.g * 255.f);
-            uint32_t b = (uint32_t)(color.b * 255.f);
-            uint32_t a = (uint32_t)(color.a * 255.f);
+            uint32_t r = (uint32_t)(clamp(color.r, 0.0f, 1.0f) * 255.f);
+            uint32_t g = (uint32_t)(clamp(color.g, 0.0f, 1.0f) * 255.f);
+            uint32_t b = (uint32_t)(clamp(color.b, 0.0f, 1.0f) * 255.f);
+            uint32_t a = (uint32_t)(clamp(color.a, 0.0f, 1.0f) * 255.f);
             uint32_t rgba = (r) | (g << 8) | (b << 16) | (a << 24);
             uint32_t* output = (uint32_t*)texel;
             *output = rgba;

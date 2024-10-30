@@ -67,6 +67,38 @@ float4_t rasterizer_t::ndc_to_screen(float4_t ndc_coord)
         );
 }
 
+static void calculate_winding_order(cull_mode_t cull_mode, front_face_t& out_face, float& out_area)
+{
+    // Negative area is flipped.
+    switch (cull_mode)
+    {
+        case cull_mode_back:
+        {
+            // Reverse the facing direction, when looking at back face.
+            out_area *= -1;
+            out_face = out_face == front_face_clockwise ? front_face_counter_clockwise : front_face_clockwise;
+            break;
+        }
+        case cull_mode_none:
+        {
+            if (out_area < 0)
+            {
+                out_area *= -1;
+                out_face = out_face == front_face_clockwise ? front_face_counter_clockwise : front_face_clockwise;
+            }
+            break;
+        }
+        case cull_mode_front_and_back:
+        {
+            if (out_area > 0) out_area *= -1;
+            break;
+        }
+        // Do nothing.
+        default:
+            break;
+    }
+}
+
 
 error_t rasterizer_t::raster(uint32_t num_triangles, vertices_t& vertices, front_face_t winding_order)
 {
@@ -104,35 +136,10 @@ error_t rasterizer_t::raster(uint32_t num_triangles, vertices_t& vertices, front
         float area = winding_order == front_face_clockwise 
                                         ? edge_function(v0_s, v2_s, v1_s) 
                                         : edge_function(v0_s, v1_s, v2_s);
-        front_face_t current_order = winding_order;
-        // Negative area is flipped.
-        switch (cull_mode)
-        {
-            case cull_mode_back:
-            {
-                // Reverse the facing direction, when looking at back face.
-                area *= -1;
-                current_order = winding_order == front_face_clockwise ? front_face_counter_clockwise : front_face_clockwise;
-                break;
-            }
-            case cull_mode_none:
-            {
-                if (area < 0)
-                {
-                    area *= -1;
-                    current_order = winding_order == front_face_clockwise ? front_face_counter_clockwise : front_face_clockwise;
-                }
-                break;
-            }
-            case cull_mode_front_and_back:
-            {
-                if (area > 0) area *= -1;
-                break;
-            }
-            // Do nothing.
-            default:
-                break;
-        }
+        front_face_t current_order = winding_order; 
+        
+        // Manage the winding order, which affects the area of the triangle.
+        calculate_winding_order(cull_mode, current_order, area);
 
         // Cull if area is negative.
         if (area < 0)
@@ -202,11 +209,15 @@ error_t rasterizer_t::raster(uint32_t num_triangles, vertices_t& vertices, front
                     uintptr_t attrib_v0 = vertices.get_vertex(tri_id * 3 + 0);
                     uintptr_t attrib_v1 = vertices.get_vertex(tri_id * 3 + 1);
                     uintptr_t attrib_v2 = vertices.get_vertex(tri_id * 3 + 2);
+
+                    // 
                     uintptr_t varying_address = allocate_varying();
+
                     m_bound_pixel_shader->interpolate_varying(varying_address, attrib_v0, attrib_v1, attrib_v2, persp_b);
                     
                     // execute the bound pixel shader. This should probably be optimized!
                     float4_t output = m_bound_pixel_shader ? m_bound_pixel_shader->execute(varying_address) : float4_t(0, 0, 0, 0);
+
                     // Finally, store the shaded pixel into the framebuffer.
                     rop.shade_to_output(m_bound_framebuffer, 0, m_viewports[0], x_s, y_s, output);
                     if (m_depth_write_enabled)

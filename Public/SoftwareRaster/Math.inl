@@ -30,6 +30,33 @@ mat4x4_t<type> mat4x4_t<type>::operator*(const mat4x4_t<type>& rh) const
 
 
 template<typename type>
+mat4x4_t<type> mat4x4_t<type>::operator*(type scalar) const
+{
+    mat4x4_t<type> ans = *this;
+    ans[0]  *= scalar;
+    ans[1]  *= scalar;
+    ans[2]  *= scalar;
+    ans[3]  *= scalar;
+     
+    ans[4]  *= scalar;
+    ans[5]  *= scalar;
+    ans[6]  *= scalar;
+    ans[7]  *= scalar;
+    
+    ans[8]  *= scalar;
+    ans[9]  *= scalar;
+    ans[10] *= scalar;
+    ans[11] *= scalar;
+    
+    ans[12] *= scalar;
+    ans[13] *= scalar;
+    ans[14] *= scalar;
+    ans[15] *= scalar;
+    return ans;
+}
+
+
+template<typename type>
 mat4x4_t<type> mat4x4_t<type>::operator+(const mat4x4_t<type>& rh) const
 {
     mat4x4_t<type> ans;
@@ -155,6 +182,170 @@ mat4x4_t<type> scale(mat4x4_t<type>& origin, const vec3_t<type>& s)
     o[5]  *= s.y;
     o[10] *= s.z;
     return o;
+}
+
+
+template<typename type>
+mat4x4_t<type> transpose(const mat4x4_t<type>& t)
+{
+    mat4x4_t<type> ans = t;
+    ans[1]          = t[4];
+    ans[2]          = t[8];
+    ans[3]          = t[12];
+    ans[7]          = t[13];
+    ans[9]          = t[6];
+    ans[11]         = t[14];
+    ans[12]         = t[3];
+    ans[13]         = t[7];
+    ans[14]         = t[11];
+    ans[8]          = t[2];
+    ans[4]          = t[1];
+    ans[6]          = t[9];
+    return ans;
+}
+
+
+template<typename type>
+mat4x4_t<type> adjugate(const mat4x4_t<type>& lh)
+{
+    mat4x4_t<type> cM;
+    // Handles the case of finding our Transpose-Cofactor matrix.
+    // This will then be used to locate our inverse.
+    //
+    cM[0] =     lh[5] * lh[10] * lh[15] + 
+                lh[6] * lh[11] * lh[13] +
+                lh[7] * lh[9]  * lh[14] -
+                lh[7] * lh[10] * lh[13] -
+                lh[6] * lh[9]  * lh[15] -
+                lh[5] * lh[11] * lh[14];
+    cM[1] = -(  lh[1] * lh[10] * lh[15] +
+                lh[2] * lh[11] * lh[13] +
+                lh[3] * lh[9]  * lh[14] -
+                lh[3] * lh[10] * lh[13] -
+                lh[2] * lh[9]  * lh[15] -
+                lh[1] * lh[11] * lh[14] );
+    cM[2] =     lh[1] * lh[6]  * lh[15] +
+                lh[2] * lh[7]  * lh[13] +
+                lh[3] * lh[5]  * lh[14] -
+                lh[3] * lh[6]  * lh[13] -
+                lh[2] * lh[5]  * lh[15] -
+                lh[1] * lh[7]  * lh[14];
+    cM[3] = -(  lh[1] * lh[6]  * lh[11] +
+                lh[2] * lh[7]  * lh[9]  +
+                lh[3] * lh[5]  * lh[10] -
+                lh[3] * lh[6]  * lh[9]  -
+                lh[2] * lh[5]  * lh[11] -
+                lh[1] * lh[7]  * lh[10] );
+    cM[4] = -(  lh[4] * lh[10] * lh[15] +
+                lh[6] * lh[11] * lh[12] +
+                lh[7] * lh[8]  * lh[14] -
+                lh[7] * lh[10] * lh[12] -
+                lh[6] * lh[8]  * lh[15] -
+                lh[4] * lh[11] * lh[14] ); 
+    cM[5] =     lh[0] * lh[10] * lh[15] + 
+                lh[2] * lh[11] * lh[12] +
+                lh[3] * lh[8]  * lh[14] -
+                lh[3] * lh[10] * lh[12] -
+                lh[2] * lh[8]  * lh[15] -
+                lh[0] * lh[11] * lh[14];
+    cM[6] = -(  lh[0] * lh[6]  * lh[15] +
+                lh[2] * lh[7]  * lh[12] +
+                lh[3] * lh[4]  * lh[14] -
+                lh[3] * lh[6]  * lh[12] -
+                lh[2] * lh[4]  * lh[15] -
+                lh[0] * lh[7]  * lh[14] );
+    cM[7] =     lh[0] * lh[6]  * lh[11] +
+                lh[2] * lh[7]  * lh[8]  +
+                lh[3] * lh[4]  * lh[10] -
+                lh[3] * lh[6]  * lh[8]  -
+                lh[2] * lh[4]  * lh[11] -
+                lh[0] * lh[7]  * lh[10];
+    cM[8] =     lh[4] * lh[9]  * lh[15] +
+                lh[5] * lh[11] * lh[12] +
+                lh[7] * lh[8]  * lh[13] -
+                lh[7] * lh[9]  * lh[12] -
+                lh[5] * lh[8]  * lh[15] -
+                lh[4] * lh[11] * lh[13];
+    cM[9] = -(  lh[0] * lh[9]  * lh[15] +
+                lh[1] * lh[11] * lh[12] +
+                lh[3] * lh[8]  * lh[13] -
+                lh[3] * lh[9]  * lh[12] -
+                lh[1] * lh[8]  * lh[15] -
+                lh[0] * lh[11] * lh[13] );
+    cM[10] =    lh[0] * lh[5]  * lh[15] +
+                lh[1] * lh[7]  * lh[12] +
+                lh[3] * lh[4]  * lh[13] -
+                lh[3] * lh[5]  * lh[12] -
+                lh[1] * lh[4]  * lh[15] -
+                lh[0] * lh[7]  * lh[13];
+    cM[11] = -( lh[0] * lh[5]  * lh[11] +
+                lh[1] * lh[7]  * lh[8]  +
+                lh[3] * lh[4]  * lh[9]  -
+                lh[3] * lh[5]  * lh[8]  -
+                lh[1] * lh[4]  * lh[11] -
+                lh[0] * lh[7]  * lh[9] );
+    cM[12] = -( lh[4] * lh[9]  * lh[14] +
+                lh[5] * lh[10] * lh[12] +
+                lh[6] * lh[8]  * lh[13] -
+                lh[6] * lh[9]  * lh[12] -
+                lh[5] * lh[8]  * lh[14] -
+                lh[4] * lh[10] * lh[13] ); 
+    cM[13] =    lh[0] * lh[9]  * lh[14] +
+                lh[1] * lh[10] * lh[12] +
+                lh[2] * lh[8]  * lh[13] -
+                lh[2] * lh[9]  * lh[12] -
+                lh[1] * lh[8]  * lh[14] -
+                lh[0] * lh[10] * lh[13];
+    cM[14] = -( lh[0] * lh[5]  * lh[14] +
+                lh[1] * lh[6]  * lh[12] +
+                lh[2] * lh[4]  * lh[13] -
+                lh[2] * lh[5]  * lh[12] -
+                lh[1] * lh[4]  * lh[14] -
+                lh[0] * lh[6]  * lh[13] );
+    cM[15] =    lh[0] * lh[5]  * lh[10] +
+                lh[1] * lh[6]  * lh[8]  +
+                lh[2] * lh[4]  * lh[9]  -
+                lh[2] * lh[5]  * lh[8]  -
+                lh[1] * lh[4]  * lh[10] -
+                lh[0] * lh[6]  * lh[9];
+
+    return cM;
+}
+
+
+template<typename type>
+type determinant(const mat4x4_t<type>& lh)
+{
+    return lh[0] * (    lh[5] * (lh[10] * lh[15] - lh[11] * lh[14]) -
+                        lh[6] * (lh[9] * lh[15] - lh[11] * lh[13]) +
+                        lh[7] * (lh[9] * lh[14] - lh[10] * lh[13])
+                    ) -
+          lh[1] * (     lh[4] * (lh[10] * lh[15] - lh[11] * lh[14]) -
+                        lh[6] * (lh[8] * lh[15] - lh[11] * lh[12]) +
+                        lh[7] * (lh[8] * lh[14] - lh[10] * lh[12])
+                    ) +
+          lh[2] * (     lh[4] * (lh[9] * lh[15] - lh[11] * lh[13]) -
+                        lh[5] * (lh[8] * lh[15] - lh[11] * lh[12]) +
+                        lh[7] * (lh[8] * lh[13] - lh[9] * lh[12])
+                    ) -
+          lh[3] * (     lh[4] * (lh[9] * lh[14] - lh[10] * lh[13]) -
+                        lh[5] * (lh[8] * lh[14] - lh[10] * lh[12]) +
+                        lh[6] * (lh[8] * lh[13] - lh[9] * lh[12]) );
+}
+
+
+template<typename type>
+mat4x4_t<type> inverse(const mat4x4_t<type>& t)
+{
+    type det         = determinant<type>(t);
+    type denom       = static_cast<type>(0);
+    if (det == 0.f)
+        return identity<type>();
+
+    mat4x4_t<type> adj = adjugate<type>(t);
+
+    denom = static_cast<type>(1) / det;
+    return adj * denom;
 }
 
 
